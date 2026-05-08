@@ -1,0 +1,48 @@
+{
+    "name": "ometra/hela-sdk",
+    "description": "Laravel package for the Ometra HELA SDK.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ometra Team",
+            "email": "dev@ometra.mx"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/http": "^10.0|^11.0|^12.0",
+        "illuminate/support": "^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "mockery/mockery": "^1.6",
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^10.0|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ometra\\HelaSdk\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ometra\\HelaSdk\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Ometra\\HelaSdk\\HelaSdkServiceProvider"
+            ],
+            "aliases": {
+                "HelaSdk": "Ometra\\HelaSdk\\Facades\\HelaSdk"
+            }
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

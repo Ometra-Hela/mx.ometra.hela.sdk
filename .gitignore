@@ -1,7 +1,11 @@
 /vendor/
+composer.lock
 node_modules/
 npm-debug.log
 yarn-error.log
+.php-cs-fixer.cache
+coverage/
+.phpunit.cache/
 
 # Laravel 4 specific
 bootstrap/compiled.php
