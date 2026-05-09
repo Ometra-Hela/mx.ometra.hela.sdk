@@ -5,6 +5,10 @@ namespace Ometra\HelaSdk\Clients;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Ometra\HelaSdk\Dtos\ApiResponseDto;
+use Ometra\HelaSdk\Dtos\DataTransferObject;
+use Ometra\HelaSdk\Dtos\DtoCollection;
+use Ometra\HelaSdk\Exceptions\HelaRequestException;
 use Ometra\HelaSdk\Exceptions\MissingAppConfigurationException;
 
 class HelaAppClient
@@ -132,6 +136,66 @@ class HelaAppClient
     public function delete(string $uri, array $data = []): Response
     {
         return $this->http()->delete($this->uri($uri), $data);
+    }
+
+    protected function apiResponse(Response $response): ApiResponseDto
+    {
+        $this->ensureSuccessful($response);
+
+        return ApiResponseDto::fromResponse($response);
+    }
+
+    /**
+     * @template T of DataTransferObject
+     *
+     * @param class-string<T> $dtoClass
+     *
+     * @return T
+     */
+    protected function dto(Response $response, string $dtoClass, ?string $nestedKey = null): DataTransferObject
+    {
+        $payload = $this->responseData($response);
+
+        if ($nestedKey !== null && is_array($payload) && array_key_exists($nestedKey, $payload)) {
+            $payload = $payload[$nestedKey];
+        }
+
+        return $dtoClass::from($payload);
+    }
+
+    /**
+     * @template T of DataTransferObject
+     *
+     * @param class-string<T> $dtoClass
+     *
+     * @return DtoCollection<T>
+     */
+    protected function dtoCollection(Response $response, string $dtoClass): DtoCollection
+    {
+        return DtoCollection::from($this->responseData($response), $dtoClass);
+    }
+
+    protected function responseData(Response $response): mixed
+    {
+        $payload = $this->responsePayload($response);
+
+        return is_array($payload) && array_key_exists('data', $payload)
+            ? $payload['data']
+            : $payload;
+    }
+
+    protected function responsePayload(Response $response): mixed
+    {
+        $this->ensureSuccessful($response);
+
+        return $response->json() ?? [];
+    }
+
+    protected function ensureSuccessful(Response $response): void
+    {
+        if (! $response->successful()) {
+            throw HelaRequestException::fromResponse($response);
+        }
     }
 
     private function uri(string $uri): string

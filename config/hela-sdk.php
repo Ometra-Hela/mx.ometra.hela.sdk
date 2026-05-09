@@ -25,9 +25,6 @@ return [
     'auster' => [
         'base_url' => env('HELA_AUSTER_URL', env('HELA_SDK_BASE_URL')),
         'token' => env('HELA_AUSTER_TOKEN', env('HELA_SDK_API_KEY')),
-        'clients_api' => [
-            'token' => env('HELA_AUSTER_CLIENTS_API_TOKEN'),
-        ],
     ],
 
     /*

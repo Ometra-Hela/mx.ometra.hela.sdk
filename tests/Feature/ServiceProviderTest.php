@@ -3,8 +3,15 @@
 namespace Ometra\HelaSdk\Tests\Feature;
 
 use Illuminate\Support\Facades\Http;
-use Ometra\HelaSdk\Facades\HelaSdk as HelaSdkFacade;
 use Ometra\HelaSdk\Clients\AusterClient;
+use Ometra\HelaSdk\Dtos\ApiResponseDto;
+use Ometra\HelaSdk\Dtos\AuthTokenDto;
+use Ometra\HelaSdk\Dtos\DtoCollection;
+use Ometra\HelaSdk\Dtos\OfferDto;
+use Ometra\HelaSdk\Dtos\ServiceDto;
+use Ometra\HelaSdk\Dtos\UserProfileDto;
+use Ometra\HelaSdk\Exceptions\HelaRequestException;
+use Ometra\HelaSdk\Facades\HelaSdk as HelaSdkFacade;
 use Ometra\HelaSdk\HelaSdk;
 use Ometra\HelaSdk\Tests\TestCase;
 
@@ -35,14 +42,33 @@ class ServiceProviderTest extends TestCase
     public function test_auster_client_sends_bearer_token_and_source_header(): void
     {
         Http::fake([
-            'https://auster.example.test/api/catalogs/offers*' => Http::response(['ok' => true]),
+            'https://auster.example.test/api/catalogs/offers*' => Http::response([
+                'data' => [
+                    'current_page' => 1,
+                    'data' => [
+                        [
+                            'offer_id' => 'HLA-10',
+                            'public_name' => 'Plan 10',
+                            'public_price' => 100,
+                        ],
+                    ],
+                    'total' => 1,
+                ],
+            ]),
         ]);
 
         $this->app['config']->set('hela-sdk.source', 'heimdal');
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test/');
         $this->app['config']->set('hela-sdk.auster.token', 'secret');
 
-        HelaSdkFacade::auster()->offers(['status' => 'active']);
+        $offers = HelaSdkFacade::auster()->offers(['status' => 'active']);
+
+        $this->assertInstanceOf(DtoCollection::class, $offers);
+        $this->assertSame(1, $offers->count());
+        $this->assertSame(1, $offers->meta['current_page']);
+        $this->assertInstanceOf(OfferDto::class, $offers->first());
+        $this->assertSame('HLA-10', $offers->first()->id);
+        $this->assertSame(100.0, $offers->first()->publicPrice);
 
         Http::assertSent(function ($request) {
             return $request->url() === 'https://auster.example.test/api/catalogs/offers?status=active'
@@ -54,44 +80,71 @@ class ServiceProviderTest extends TestCase
     public function test_auster_client_exposes_known_api_routes(): void
     {
         Http::fake([
-            'https://auster.example.test/api/services/msisdn/525512345678' => Http::response(['ok' => true]),
-            'https://auster.example.test/api/orders/100/process' => Http::response(['ok' => true]),
+            'https://auster.example.test/api/services/msisdn/525512345678' => Http::response([
+                'data' => [
+                    'id_service' => 10,
+                    'id_client' => 20,
+                    'msisdn' => '525512345678',
+                    'status' => 'ACTIVE',
+                ],
+            ]),
+            'https://auster.example.test/api/orders/100/process' => Http::response([
+                'message' => 'Orden procesada',
+            ]),
         ]);
 
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
 
-        HelaSdkFacade::auster()->serviceByMsisdn('525512345678');
-        HelaSdkFacade::auster()->processOrder(100);
+        $service = HelaSdkFacade::auster()->serviceByMsisdn('525512345678');
+        $process = HelaSdkFacade::auster()->processOrder(100);
 
+        $this->assertInstanceOf(ServiceDto::class, $service);
+        $this->assertSame('525512345678', $service->msisdn);
+        $this->assertInstanceOf(ApiResponseDto::class, $process);
+        $this->assertSame('Orden procesada', $process->message);
         Http::assertSentCount(2);
     }
 
-    public function test_auster_clients_api_uses_prefixed_client_api_token(): void
+    public function test_auster_clients_api_without_explicit_token_does_not_send_authorization(): void
     {
         Http::fake([
-            'https://auster.example.test/clients-api/client-profile' => Http::response(['ok' => true]),
+            'https://auster.example.test/clients-api/client-profile' => Http::response([
+                'data' => ['id_client' => 20, 'email' => 'client@example.test'],
+            ]),
         ]);
 
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
-        $this->app['config']->set('hela-sdk.auster.clients_api.token', 'client-token');
 
-        HelaSdkFacade::auster()->clientsApi()->clientProfile();
+        $profile = HelaSdkFacade::auster()->clientsApi()->clientProfile();
+
+        $this->assertInstanceOf(UserProfileDto::class, $profile);
+        $this->assertSame(20, $profile->clientId);
 
         Http::assertSent(function ($request) {
             return $request->url() === 'https://auster.example.test/clients-api/client-profile'
-                && $request->hasHeader('Authorization', 'Bearer API-client-token');
+                && ! $request->hasHeader('Authorization');
         });
     }
 
     public function test_auster_clients_api_can_use_user_session_tokens(): void
     {
         Http::fake([
-            'https://auster.example.test/clients-api/user-profile' => Http::response(['ok' => true]),
+            'https://auster.example.test/clients-api/user-profile' => Http::response([
+                'data' => [
+                    'uri_clientUser' => 'user-1',
+                    'id_client' => 20,
+                    'email' => 'user@example.test',
+                    'name' => 'Test User',
+                ],
+            ]),
         ]);
 
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
 
-        HelaSdkFacade::auster()->clientsApiAsUser('user-token')->userProfile();
+        $profile = HelaSdkFacade::auster()->clientsApiAsUser('user-token')->userProfile();
+
+        $this->assertInstanceOf(UserProfileDto::class, $profile);
+        $this->assertSame('user@example.test', $profile->email);
 
         Http::assertSent(function ($request) {
             return $request->url() === 'https://auster.example.test/clients-api/user-profile'
@@ -102,16 +155,24 @@ class ServiceProviderTest extends TestCase
     public function test_auster_clients_api_login_does_not_require_configured_token(): void
     {
         Http::fake([
-            'https://auster.example.test/clients-api/authentication/login' => Http::response(['ok' => true]),
+            'https://auster.example.test/clients-api/authentication/login' => Http::response([
+                'data' => [
+                    'token' => 'session-token',
+                    'uri_clientUser' => 'user-1',
+                ],
+            ]),
         ]);
 
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
-        $this->app['config']->set('hela-sdk.auster.clients_api.token', 'client-api-token');
 
-        HelaSdkFacade::auster()->clientsApi()->login([
+        $login = HelaSdkFacade::auster()->clientsApi()->login([
             'email' => 'client@example.test',
             'password' => 'secret',
         ]);
+
+        $this->assertInstanceOf(AuthTokenDto::class, $login);
+        $this->assertSame('session-token', $login->token);
+        $this->assertSame('user-1', $login->clientUserUri);
 
         Http::assertSent(function ($request) {
             return $request->url() === 'https://auster.example.test/clients-api/authentication/login'
@@ -122,12 +183,17 @@ class ServiceProviderTest extends TestCase
     public function test_auster_clients_api_as_client_always_uses_api_prefix(): void
     {
         Http::fake([
-            'https://auster.example.test/clients-api/client-profile' => Http::response(['ok' => true]),
+            'https://auster.example.test/clients-api/client-profile' => Http::response([
+                'data' => ['id_client' => 20, 'email' => 'client@example.test'],
+            ]),
         ]);
 
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
 
-        HelaSdkFacade::auster()->clientsApiAsClient('client-token')->clientProfile();
+        $profile = HelaSdkFacade::auster()->clientsApiAsClient('client-token')->clientProfile();
+
+        $this->assertInstanceOf(UserProfileDto::class, $profile);
+        $this->assertSame('client@example.test', $profile->email);
 
         Http::assertSent(function ($request) {
             return $request->url() === 'https://auster.example.test/clients-api/client-profile'
@@ -135,20 +201,24 @@ class ServiceProviderTest extends TestCase
         });
     }
 
-    public function test_auster_clients_api_configured_token_is_always_a_client_api_token(): void
+    public function test_failed_responses_throw_structured_exception(): void
     {
         Http::fake([
-            'https://auster.example.test/clients-api/client-profile' => Http::response(['ok' => true]),
+            'https://auster.example.test/api/catalogs/offers*' => Http::response([
+                'message' => 'Invalid request',
+                'errors' => ['status' => ['Invalid status']],
+            ], 422),
         ]);
 
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
-        $this->app['config']->set('hela-sdk.auster.clients_api.token', 'USR-client-token');
 
-        HelaSdkFacade::auster()->clientsApi()->clientProfile();
-
-        Http::assertSent(function ($request) {
-            return $request->url() === 'https://auster.example.test/clients-api/client-profile'
-                && $request->hasHeader('Authorization', 'Bearer API-client-token');
-        });
+        try {
+            HelaSdkFacade::auster()->offers(['status' => 'invalid']);
+            $this->fail('Expected a HELA request exception.');
+        } catch (HelaRequestException $exception) {
+            $this->assertSame(422, $exception->status);
+            $this->assertSame('Invalid request', $exception->getMessage());
+            $this->assertSame(['status' => ['Invalid status']], $exception->errors);
+        }
     }
 }

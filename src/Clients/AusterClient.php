@@ -2,7 +2,14 @@
 
 namespace Ometra\HelaSdk\Clients;
 
-use Illuminate\Http\Client\Response;
+use Ometra\HelaSdk\Dtos\ApiResponseDto;
+use Ometra\HelaSdk\Dtos\DtoCollection;
+use Ometra\HelaSdk\Dtos\GenericDto;
+use Ometra\HelaSdk\Dtos\OfferDto;
+use Ometra\HelaSdk\Dtos\OrderDto;
+use Ometra\HelaSdk\Dtos\PaymentDto;
+use Ometra\HelaSdk\Dtos\ServiceDto;
+use Ometra\HelaSdk\Dtos\ShippingQuoteDto;
 
 class AusterClient extends HelaAppClient
 {
@@ -46,122 +53,138 @@ class AusterClient extends HelaAppClient
 
     /**
      * @param array<string, mixed> $query
+     *
+     * @return DtoCollection<OfferDto>
      */
-    public function offers(array $query = []): Response
+    public function offers(array $query = []): DtoCollection
     {
-        return $this->get('/api/catalogs/offers', $query);
+        return $this->dtoCollection($this->get('/api/catalogs/offers', $query), OfferDto::class);
     }
 
-    public function offer(int|string $offerId): Response
+    public function offer(int|string $offerId): OfferDto
     {
-        return $this->get('/api/catalogs/offers/' . $offerId);
+        return $this->dto($this->get('/api/catalogs/offers/' . $offerId), OfferDto::class, 'offer');
     }
 
-    public function portabilitiesByMsisdn(string $msisdn): Response
+    public function portabilitiesByMsisdn(string $msisdn): GenericDto
     {
-        return $this->get('/api/catalogs/portability/msisdn/' . $msisdn);
+        return $this->dto($this->get('/api/catalogs/portability/msisdn/' . $msisdn), GenericDto::class);
     }
 
-    public function serviceByMsisdn(string $msisdn): Response
+    public function serviceByMsisdn(string $msisdn): ServiceDto
     {
-        return $this->get('/api/services/msisdn/' . $msisdn);
+        return $this->dto($this->get('/api/services/msisdn/' . $msisdn), ServiceDto::class);
     }
 
-    public function serviceSupplementaries(string $msisdn): Response
+    /**
+     * @return DtoCollection<OfferDto>
+     */
+    public function serviceSupplementaries(string $msisdn): DtoCollection
     {
-        return $this->get('/api/services/msisdn/' . $msisdn . '/supplementaries');
+        return $this->dtoCollection($this->get('/api/services/msisdn/' . $msisdn . '/supplementaries'), OfferDto::class);
     }
 
-    public function serviceReplacements(string $msisdn): Response
+    /**
+     * @return DtoCollection<OfferDto>
+     */
+    public function serviceReplacements(string $msisdn): DtoCollection
     {
-        return $this->get('/api/services/msisdn/' . $msisdn . '/replacements');
+        return $this->dtoCollection($this->get('/api/services/msisdn/' . $msisdn . '/replacements'), OfferDto::class);
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    public function validateActivationKey(array $data): Response
+    public function validateActivationKey(array $data): GenericDto
     {
-        return $this->post('/api/services/activations/validate/activation-key', $data);
+        return $this->dto($this->post('/api/services/activations/validate/activation-key', $data), GenericDto::class);
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    public function validateSimCard(array $data): Response
+    public function validateSimCard(array $data): GenericDto
     {
-        return $this->post('/api/services/activations/validate/sim-card', $data);
+        return $this->dto($this->post('/api/services/activations/validate/sim-card', $data), GenericDto::class);
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    public function activateService(array $data): Response
+    public function activateService(array $data): GenericDto
     {
-        return $this->post('/api/services/activations/activate', $data);
+        return $this->dto($this->post('/api/services/activations/activate', $data), GenericDto::class);
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    public function createOrder(array $data): Response
+    public function createOrder(array $data): OrderDto
     {
-        return $this->post('/api/orders/new', $data);
+        return $this->dto($this->post('/api/orders/new', $data), OrderDto::class);
     }
 
-    public function order(int|string $orderId): Response
+    public function order(int|string $orderId): OrderDto
     {
-        return $this->get('/api/orders/' . $orderId);
+        return $this->dto($this->get('/api/orders/' . $orderId), OrderDto::class);
     }
 
-    public function orderByMsisdn(string $msisdn): Response
+    /**
+     * @return DtoCollection<OrderDto>
+     */
+    public function orderByMsisdn(string $msisdn): DtoCollection
     {
-        return $this->get('/api/orders/msisdn/' . $msisdn);
+        return $this->dtoCollection($this->get('/api/orders/msisdn/' . $msisdn), OrderDto::class);
     }
 
-    public function orderPayment(int|string $orderId): Response
+    /**
+     * @return DtoCollection<PaymentDto>
+     */
+    public function orderPayment(int|string $orderId): DtoCollection
     {
-        return $this->get('/api/orders/' . $orderId . '/payment');
+        return $this->dtoCollection($this->get('/api/orders/' . $orderId . '/payment'), PaymentDto::class);
     }
 
-    public function publishOrder(int|string $orderId): Response
+    public function publishOrder(int|string $orderId): OrderDto
     {
-        return $this->post('/api/orders/' . $orderId . '/publish');
+        return $this->dto($this->post('/api/orders/' . $orderId . '/publish'), OrderDto::class);
     }
 
-    public function processOrder(int|string $orderId): Response
+    public function processOrder(int|string $orderId): ApiResponseDto
     {
-        return $this->post('/api/orders/' . $orderId . '/process');
+        return $this->apiResponse($this->post('/api/orders/' . $orderId . '/process'));
     }
 
-    public function cancelOrder(int|string $orderId): Response
+    public function cancelOrder(int|string $orderId): ApiResponseDto
     {
-        return $this->post('/api/orders/' . $orderId . '/cancel');
+        return $this->apiResponse($this->post('/api/orders/' . $orderId . '/cancel'));
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    public function addOrderPayment(int|string $orderId, array $data): Response
+    public function addOrderPayment(int|string $orderId, array $data): ApiResponseDto
     {
-        return $this->post('/api/orders/' . $orderId . '/add-payment', $data);
+        return $this->apiResponse($this->post('/api/orders/' . $orderId . '/add-payment', $data));
     }
 
     /**
      * @param array<string, mixed> $query
+     *
+     * @return DtoCollection<ShippingQuoteDto>
      */
-    public function shippingQuotes(array $query = []): Response
+    public function shippingQuotes(array $query = []): DtoCollection
     {
-        return $this->get('/api/shipping/quotes', $query);
+        return $this->dtoCollection($this->get('/api/shipping/quotes', $query), ShippingQuoteDto::class);
     }
 
-    public function validatePayment(int|string $paymentId): Response
+    public function validatePayment(int|string $paymentId): ApiResponseDto
     {
-        return $this->post('/api/payments/' . $paymentId . '/validate');
+        return $this->apiResponse($this->post('/api/payments/' . $paymentId . '/validate'));
     }
 
-    public function cancelPayment(int|string $paymentId): Response
+    public function cancelPayment(int|string $paymentId): ApiResponseDto
     {
-        return $this->post('/api/payments/' . $paymentId . '/cancel');
+        return $this->apiResponse($this->post('/api/payments/' . $paymentId . '/cancel'));
     }
 }

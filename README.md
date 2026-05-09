@@ -3,28 +3,12 @@
 Paquete Laravel para integrar apps de Ometra HELA. El primer cliente incluido es
 para consumir la API de Auster desde otros modulos.
 
-## Instalacion local
+## Instalacion
 
-Agrega el repositorio local a la aplicacion host:
-
-```json
-{
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../mx.ometra.hela.sdk"
-        }
-    ],
-    "require": {
-        "ometra/hela-sdk": "*"
-    }
-}
-```
-
-Despues instala dependencias:
+Instala el paquete desde Packagist:
 
 ```bash
-composer update ometra/hela-sdk
+composer require ometra/hela-sdk:dev-master
 ```
 
 Laravel descubre automaticamente el service provider y el facade.
@@ -43,7 +27,6 @@ Variables disponibles:
 HELA_SDK_APP_NAME=heimdal
 HELA_AUSTER_URL=https://auster.example.test
 HELA_AUSTER_TOKEN=
-HELA_AUSTER_CLIENTS_API_TOKEN=
 HELA_SDK_TIMEOUT=30
 HELA_SDK_RETRY_TIMES=0
 HELA_SDK_RETRY_SLEEP=100
@@ -54,13 +37,11 @@ El token se envia como `Authorization: Bearer`, igual que espera el middleware
 `App\Http\Middleware\Auth\API\ValidateAccessToken` de Auster.
 
 Para `clients-api`, Auster usa `ValidateClientToken`, que espera un bearer con
-formato `{tipo}-{token}`. `HELA_AUSTER_CLIENTS_API_TOKEN` es para registros de
-`ClientsApiTokens`, por lo que el SDK lo envia como `API-{token}`.
-
-El prefijo `USR` se usa solo cuando un usuario de cliente inicio sesion. Auster
-devuelve un `ClientUserToken` crudo en `authentication/login`; para llamar como
-ese usuario, pasa ese token a `clientsApiAsUser($token)` y el SDK lo envia como
-`USR-{token}`.
+formato `{tipo}-{token}`. SelfService trabaja con `ClientUserToken`, asi que el
+SDK no requiere un token global para esa seccion: llama `clientsApiAsUser($token)`
+y el SDK lo envia como `USR-{token}`. Si un flujo administrativo necesita un
+token de `ClientsApiTokens`, pasalo explicitamente con `clientsApiAsClient($token)`
+y se enviara como `API-{token}`.
 
 ## Uso
 
@@ -70,10 +51,23 @@ use Ometra\HelaSdk\Facades\HelaSdk;
 $offers = HelaSdk::auster()->offers();
 $service = HelaSdk::auster()->serviceByMsisdn('525512345678');
 $order = HelaSdk::auster()->order(100);
+
+$firstOffer = $offers->first();
+$price = $firstOffer?->publicPrice;
 ```
 
+Los helpers tipados devuelven DTOs, no respuestas HTTP crudas:
+
+- Listados: `Ometra\HelaSdk\Dtos\DtoCollection`
+- Recursos: `OfferDto`, `ServiceDto`, `OrderDto`, `AddressDto`, `UserProfileDto`, etc.
+- Acciones sin recurso principal: `ApiResponseDto`
+
+Cada DTO conserva el payload original en `attributes`, expone `toArray()` y
+permite leer campos no tipados con `get($key)` o acceso magico (`$dto->campo`).
+
 Tambien puedes hacer llamadas directas al API de Auster cuando el SDK todavia
-no tenga un helper especifico:
+no tenga un helper especifico. Esas llamadas directas siguen devolviendo
+`Illuminate\Http\Client\Response`:
 
 ```php
 $response = HelaSdk::auster()->post('/api/log-event/example', [
@@ -110,7 +104,7 @@ $login = HelaSdk::auster()->clientsApi()->login([
 ]);
 
 $userProfile = HelaSdk::auster()
-    ->clientsApiAsUser($login->json('data.token'))
+    ->clientsApiAsUser($login->token)
     ->userProfile();
 ```
 
