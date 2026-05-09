@@ -8,6 +8,7 @@ use Ometra\HelaSdk\Dtos\ApiResponseDto;
 use Ometra\HelaSdk\Dtos\AuthTokenDto;
 use Ometra\HelaSdk\Dtos\DtoCollection;
 use Ometra\HelaSdk\Dtos\OfferDto;
+use Ometra\HelaSdk\Dtos\OrderDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
 use Ometra\HelaSdk\Dtos\UserProfileDto;
 use Ometra\HelaSdk\Exceptions\HelaRequestException;
@@ -199,6 +200,55 @@ class ServiceProviderTest extends TestCase
             return $request->url() === 'https://auster.example.test/clients-api/client-profile'
                 && $request->hasHeader('Authorization', 'Bearer API-client-token');
         });
+    }
+
+    public function test_auster_clients_api_exposes_service_change_routes(): void
+    {
+        Http::fake([
+            'https://auster.example.test/clients-api/services/525512345678/replacement-options' => Http::response([
+                'data' => [['offer_id' => 'REP-1', 'public_name' => 'Replacement']],
+            ]),
+            'https://auster.example.test/clients-api/services/525512345678/renew-options' => Http::response([
+                'data' => [['offer_id' => 'REN-1', 'public_name' => 'Renewal']],
+            ]),
+            'https://auster.example.test/clients-api/services/525512345678/renew' => Http::response([
+                'data' => ['id_order' => 501, 'total' => 199],
+            ]),
+            'https://auster.example.test/clients-api/services/525512345678/replace-offer' => Http::response([
+                'message' => 'Offer replaced',
+            ]),
+            'https://auster.example.test/clients-api/services/525512345678/replace-sim-card' => Http::response([
+                'message' => 'SIM card replaced',
+            ]),
+            'https://auster.example.test/clients-api/imei/123456789012345/lock' => Http::response([
+                'message' => 'IMEI locked',
+            ]),
+            'https://auster.example.test/clients-api/imei/123456789012345/unlock' => Http::response([
+                'message' => 'IMEI unlocked',
+            ]),
+        ]);
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+        $client = HelaSdkFacade::auster()->clientsApiAsClient('client-token');
+
+        $replacementOptions = $client->replacementOptions('525512345678');
+        $renewOptions = $client->renewOptions('525512345678');
+        $renewOrder = $client->renewService('525512345678', ['offer_id' => 'REN-1']);
+        $replaceOffer = $client->replaceOffer('525512345678', ['offer_id' => 'REP-1']);
+        $replaceSimCard = $client->replaceSimCard('525512345678', ['simcard' => '8952020000000000000']);
+        $imeiLock = $client->imeiLock('123456789012345');
+        $imeiUnlock = $client->imeiUnlock('123456789012345');
+
+        $this->assertInstanceOf(DtoCollection::class, $replacementOptions);
+        $this->assertInstanceOf(OfferDto::class, $replacementOptions->first());
+        $this->assertInstanceOf(DtoCollection::class, $renewOptions);
+        $this->assertInstanceOf(OrderDto::class, $renewOrder);
+        $this->assertSame(501, $renewOrder->id);
+        $this->assertSame('Offer replaced', $replaceOffer->message);
+        $this->assertSame('SIM card replaced', $replaceSimCard->message);
+        $this->assertSame('IMEI locked', $imeiLock->message);
+        $this->assertSame('IMEI unlocked', $imeiUnlock->message);
+        Http::assertSentCount(7);
     }
 
     public function test_failed_responses_throw_structured_exception(): void

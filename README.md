@@ -118,7 +118,7 @@ Atajos disponibles para `clients-api`:
 - `cfdi($query)`, `cfdiOrders()`, `requestCfdi($data)` y `downloadCfdi($uid, $format)`
 - `orders($query)`, `order($id)` y `createOrder($data)`
 - `portabilities($query)`, `portability($id)`, `portabilityTransitories()`, `requestPortability($data)` y `deletePortability($id)`
-- `services($query)`, `service($msisdn)`, `serviceProfile($msisdn)`, `serviceBags($msisdn)`, `activateOptions($msisdn)`, `topupOptions($msisdn)`, `activateService($msisdn, $data)`, `topupService($msisdn, $data)`, `updateServiceName($msisdn, $data)`, `suspendService($msisdn)` y `resumeService($msisdn)`
+- `services($query)`, `service($msisdn)`, `serviceProfile($msisdn)`, `serviceBags($msisdn)`, `replacementOptions($msisdn)`, `activateOptions($msisdn)`, `topupOptions($msisdn)`, `renewOptions($msisdn)`, `activateService($msisdn, $data)`, `topupService($msisdn, $data)`, `renewService($msisdn, $data)`, `replaceOffer($msisdn, $data)`, `replaceSimCard($msisdn, $data)`, `updateServiceName($msisdn, $data)`, `suspendService($msisdn)`, `resumeService($msisdn)`, `imeiLock($imei)` y `imeiUnlock($imei)`
 - `users($query)`, `user($uri)`, `createUser($data)`, `updateUser($uri, $data)` y `deleteUser($uri)`
 
 El servicio tambien se puede resolver desde el contenedor:

@@ -302,6 +302,14 @@ class AusterClientsApiClient extends HelaAppClient
     /**
      * @return DtoCollection<OfferDto>
      */
+    public function replacementOptions(string $msisdn): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/clients-api/services/' . $msisdn . '/replacement-options'), OfferDto::class);
+    }
+
+    /**
+     * @return DtoCollection<OfferDto>
+     */
     public function activateOptions(string $msisdn): DtoCollection
     {
         return $this->dtoCollection($this->get('/clients-api/services/' . $msisdn . '/activate-options'), OfferDto::class);
@@ -334,6 +342,38 @@ class AusterClientsApiClient extends HelaAppClient
     /**
      * @param array<string, mixed> $data
      */
+    public function renewService(string $msisdn, array $data): OrderDto
+    {
+        return $this->dto($this->post('/clients-api/services/' . $msisdn . '/renew', $data), OrderDto::class);
+    }
+
+    /**
+     * @return DtoCollection<OfferDto>
+     */
+    public function renewOptions(string $msisdn): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/clients-api/services/' . $msisdn . '/renew-options'), OfferDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function replaceOffer(string $msisdn, array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/clients-api/services/' . $msisdn . '/replace-offer', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function replaceSimCard(string $msisdn, array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/clients-api/services/' . $msisdn . '/replace-sim-card', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
     public function updateServiceName(string $msisdn, array $data): ApiResponseDto
     {
         return $this->apiResponse($this->post('/clients-api/services/' . $msisdn . '/update-name', $data));
@@ -347,6 +387,16 @@ class AusterClientsApiClient extends HelaAppClient
     public function resumeService(string $msisdn): ApiResponseDto
     {
         return $this->apiResponse($this->post('/clients-api/services/' . $msisdn . '/resume'));
+    }
+
+    public function imeiLock(string $imei): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/clients-api/imei/' . $imei . '/lock'));
+    }
+
+    public function imeiUnlock(string $imei): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/clients-api/imei/' . $imei . '/unlock'));
     }
 
     /**
