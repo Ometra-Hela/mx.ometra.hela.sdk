@@ -16,17 +16,30 @@ abstract class DataTransferObject implements Arrayable, JsonSerializable
 
     public function __get(string $key): mixed
     {
-        return $this->attributes[$key] ?? null;
+        if (array_key_exists($key, $this->attributes)) {
+            return $this->attributes[$key];
+        }
+
+        $property = self::camelKey($key);
+
+        return property_exists($this, $property) ? $this->{$property} : null;
     }
 
     public function __isset(string $key): bool
     {
-        return array_key_exists($key, $this->attributes);
+        return array_key_exists($key, $this->attributes)
+            || property_exists($this, self::camelKey($key));
     }
 
     public function get(string $key, mixed $default = null): mixed
     {
-        return $this->attributes[$key] ?? $default;
+        if (array_key_exists($key, $this->attributes)) {
+            return $this->attributes[$key];
+        }
+
+        $property = self::camelKey($key);
+
+        return property_exists($this, $property) ? $this->{$property} : $default;
     }
 
     public static function from(mixed $payload): static
@@ -39,7 +52,16 @@ abstract class DataTransferObject implements Arrayable, JsonSerializable
      */
     public function toArray(): array
     {
-        return $this->attributes;
+        $data = $this->canonicalizeArray($this->attributes);
+        foreach (get_object_vars($this) as $key => $value) {
+            if ($key === 'attributes') {
+                continue;
+            }
+
+            $data[$key] = $this->serializeValue($value);
+        }
+
+        return $data === [] ? $this->attributes : $data;
     }
 
     /**
@@ -56,7 +78,7 @@ abstract class DataTransferObject implements Arrayable, JsonSerializable
     public static function normalize(mixed $value): array
     {
         if ($value instanceof self) {
-            return $value->toArray();
+            return $value->attributes !== [] ? $value->attributes : $value->toArray();
         }
 
         if (is_array($value)) {
@@ -101,5 +123,67 @@ abstract class DataTransferObject implements Arrayable, JsonSerializable
         }
 
         return (float) $value;
+    }
+
+    private static function camelKey(string $key): string
+    {
+        if (! str_contains($key, '_')) {
+            return $key;
+        }
+
+        return lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $key))));
+    }
+
+    private function serializeValue(mixed $value): mixed
+    {
+        if ($value instanceof Arrayable) {
+            return $value->toArray();
+        }
+
+        if ($value instanceof JsonSerializable) {
+            return $value->jsonSerialize();
+        }
+
+        if (is_array($value)) {
+            return array_map(fn (mixed $item) => $this->serializeValue($item), $value);
+        }
+
+        if (is_object($value)) {
+            return json_decode(json_encode($value), true) ?: [];
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<mixed> $value
+     * @return array<mixed>
+     */
+    private function canonicalizeArray(array $value): array
+    {
+        if (array_is_list($value)) {
+            return array_map(fn (mixed $item) => $this->canonicalizeValue($item), $value);
+        }
+
+        $canonical = [];
+        foreach ($value as $key => $item) {
+            $canonicalKey = is_string($key) ? self::camelKey($key) : $key;
+            $canonical[$canonicalKey] = $this->canonicalizeValue($item);
+        }
+
+        return $canonical;
+    }
+
+    private function canonicalizeValue(mixed $value): mixed
+    {
+        if (is_array($value)) {
+            return $this->canonicalizeArray($value);
+        }
+
+        if (is_object($value)) {
+            return $this->canonicalizeArray(self::normalize($value));
+        }
+
+        return $value;
     }
 }

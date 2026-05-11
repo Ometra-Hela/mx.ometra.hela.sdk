@@ -35,10 +35,10 @@ final class OrderDto extends DataTransferObject
 
         return new self(
             attributes: $data,
-            id: self::firstValue($data, ['id_order', 'order_id', 'id']),
-            clientId: self::firstValue($data, ['id_client', 'client_id']),
+            id: self::firstValue($data, ['id', 'id_order', 'order_id']),
+            clientId: self::firstValue($data, ['clientId', 'id_client', 'client_id']),
             email: self::nullableString($data['email'] ?? null),
-            total: self::nullableFloat(self::firstValue($data, ['order_total', 'total'])),
+            total: self::nullableFloat(self::firstValue($data, ['total', 'order_total'])),
             published: isset($data['published']) ? (bool) $data['published'] : null,
             processed: isset($data['processed']) ? (bool) $data['processed'] : null,
         );

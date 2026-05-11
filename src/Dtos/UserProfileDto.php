@@ -26,8 +26,8 @@ final class UserProfileDto extends DataTransferObject
 
         return new self(
             attributes: $data,
-            clientId: self::firstValue($data, ['id_client', 'client_id']),
-            userId: self::firstValue($data, ['id_user', 'id_clientUser', 'user_id']),
+            clientId: self::firstValue($data, ['clientId', 'id_client', 'client_id']),
+            userId: self::firstValue($data, ['userId', 'id_user', 'id_clientUser', 'user_id']),
             email: self::nullableString($data['email'] ?? null),
             name: self::nullableString(self::firstValue($data, ['name', 'full_name'])),
         );

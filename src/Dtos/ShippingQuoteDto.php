@@ -23,9 +23,9 @@ final class ShippingQuoteDto extends DataTransferObject
 
         return new self(
             attributes: $data,
-            providerId: self::firstValue($data, ['provider_id', 'id_provider', 'id']),
-            providerName: self::nullableString($data['provider_name'] ?? null),
-            serviceName: self::nullableString($data['service_name'] ?? null),
+            providerId: self::firstValue($data, ['providerId', 'provider_id', 'id_provider', 'id']),
+            providerName: self::nullableString(self::firstValue($data, ['providerName', 'provider_name'])),
+            serviceName: self::nullableString(self::firstValue($data, ['serviceName', 'service_name'])),
             price: self::nullableFloat(self::firstValue($data, ['price', 'shipping_cost', 'cost'])),
         );
     }

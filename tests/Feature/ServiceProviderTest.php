@@ -78,6 +78,88 @@ class ServiceProviderTest extends TestCase
         });
     }
 
+    public function test_dtos_serialize_with_canonical_field_names(): void
+    {
+        $offer = OfferDto::from([
+            'offer_id' => 'HLA-10',
+            'supplementary_id' => 'SUP-10',
+            'public_name' => 'Plan 10',
+            'public_price' => '100.50',
+            'service_type' => 'PRE',
+            'validity' => 30,
+            'validity_units' => 'days',
+            'expiration_units' => 'months',
+        ]);
+
+        $serialized = $offer->toArray();
+
+        $this->assertSame('HLA-10', $serialized['id']);
+        $this->assertSame('SUP-10', $serialized['supplementaryId']);
+        $this->assertSame('Plan 10', $serialized['publicName']);
+        $this->assertSame(100.5, $serialized['publicPrice']);
+        $this->assertSame(30, $serialized['validity']);
+        $this->assertSame('days', $serialized['validityUnits']);
+        $this->assertSame('months', $serialized['expirationUnits']);
+        $this->assertSame('PRE', $serialized['serviceType']);
+        $this->assertArrayNotHasKey('public_name', $offer->jsonSerialize());
+        $this->assertSame('Plan 10', $offer->public_name);
+        $this->assertSame('100.50', $offer->public_price);
+    }
+
+    public function test_order_dto_serializes_nested_collections(): void
+    {
+        $order = OrderDto::from([
+            'id_order' => 501,
+            'id_client' => 20,
+            'order_total' => '199.99',
+            'items' => [
+                [
+                    'id_orderItem' => 'IT-1',
+                    'description' => 'Plan',
+                    'final_price' => '199.99',
+                ],
+            ],
+            'payments' => [
+                [
+                    'id_payment' => 'PAY-1',
+                    'payment_method' => 'PAYPAL',
+                    'amount' => '199.99',
+                    'status' => 'APPROVED',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(501, $order->toArray()['id']);
+        $this->assertSame(199.99, $order->toArray()['total']);
+        $this->assertSame('IT-1', $order->toArray()['items'][0]['id']);
+        $this->assertSame('PAYPAL', $order->toArray()['payments'][0]['method']);
+    }
+
+    public function test_service_dto_preserves_dynamic_attributes_as_camel_case(): void
+    {
+        $service = ServiceDto::from([
+            'id_service' => 10,
+            'id_client' => 20,
+            'dt_expiry' => '2026-06-01',
+            'link_attempts' => 2,
+            'offer' => [
+                'public_name' => 'Plan 10',
+                'service_type' => 'PRE',
+            ],
+            'last_topup' => [
+                'dt_execution' => '2026-05-01',
+            ],
+        ])->toArray();
+
+        $this->assertSame(10, $service['id']);
+        $this->assertSame('2026-06-01', $service['dtExpiry']);
+        $this->assertSame(2, $service['linkAttempts']);
+        $this->assertSame('Plan 10', $service['offer']['publicName']);
+        $this->assertSame('PRE', $service['offer']['serviceType']);
+        $this->assertSame('2026-05-01', $service['lastTopup']['dtExecution']);
+        $this->assertArrayNotHasKey('dt_expiry', $service);
+    }
+
     public function test_auster_client_exposes_known_api_routes(): void
     {
         Http::fake([

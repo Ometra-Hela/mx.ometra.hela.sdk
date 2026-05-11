@@ -22,7 +22,7 @@ final class AuthTokenDto extends DataTransferObject
         return new self(
             attributes: $data,
             token: self::nullableString(self::firstValue($data, ['token', 'value'])),
-            clientUserUri: self::nullableString(self::firstValue($data, ['uri_clientUser', 'client_user_uri'])),
+            clientUserUri: self::nullableString(self::firstValue($data, ['clientUserUri', 'uri_clientUser', 'client_user_uri'])),
         );
     }
 }

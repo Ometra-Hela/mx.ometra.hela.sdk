@@ -26,12 +26,12 @@ final class OrderItemDto extends DataTransferObject
 
         return new self(
             attributes: $data,
-            id: self::firstValue($data, ['id_orderItem', 'item_id', 'id']),
+            id: self::firstValue($data, ['id', 'idOrderItem', 'id_orderItem', 'item_id']),
             type: self::nullableString(self::firstValue($data, ['type', 'item_type'])),
             key: self::nullableString($data['key'] ?? null),
             description: self::nullableString($data['description'] ?? null),
             price: self::nullableFloat($data['price'] ?? null),
-            finalPrice: self::nullableFloat(self::firstValue($data, ['final_price', 'price'])),
+            finalPrice: self::nullableFloat(self::firstValue($data, ['finalPrice', 'final_price', 'price'])),
             target: self::nullableString($data['target'] ?? null),
         );
     }

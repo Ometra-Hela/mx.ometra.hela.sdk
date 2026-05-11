@@ -24,8 +24,8 @@ final class AddressDto extends DataTransferObject
 
         return new self(
             attributes: $data,
-            id: self::firstValue($data, ['id_address', 'address_id', 'id']),
-            postalCode: self::nullableString(self::firstValue($data, ['cp', 'postal_code', 'zip_code'])),
+            id: self::firstValue($data, ['id', 'id_address', 'address_id']),
+            postalCode: self::nullableString(self::firstValue($data, ['postalCode', 'cp', 'postal_code', 'zip_code'])),
         );
     }
 }

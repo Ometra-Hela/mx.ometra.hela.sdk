@@ -23,7 +23,7 @@ final class PaymentDto extends DataTransferObject
 
         return new self(
             attributes: $data,
-            id: self::firstValue($data, ['id_payment', 'payment_id', 'id']),
+            id: self::firstValue($data, ['id', 'id_payment', 'payment_id']),
             method: self::nullableString(self::firstValue($data, ['method', 'payment_method'])),
             status: self::nullableString($data['status'] ?? null),
             amount: self::nullableFloat($data['amount'] ?? null),
