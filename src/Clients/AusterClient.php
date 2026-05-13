@@ -9,7 +9,6 @@ use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
 use Ometra\HelaSdk\Dtos\PaymentDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
-use Ometra\HelaSdk\Dtos\ShippingQuoteDto;
 
 class AusterClient extends HelaAppClient
 {
@@ -166,16 +165,6 @@ class AusterClient extends HelaAppClient
     public function addOrderPayment(int|string $orderId, array $data): ApiResponseDto
     {
         return $this->apiResponse($this->post('/api/orders/' . $orderId . '/add-payment', $data));
-    }
-
-    /**
-     * @param array<string, mixed> $query
-     *
-     * @return DtoCollection<ShippingQuoteDto>
-     */
-    public function shippingQuotes(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/api/shipping/quotes', $query), ShippingQuoteDto::class);
     }
 
     public function validatePayment(int|string $paymentId): ApiResponseDto

@@ -59,7 +59,7 @@ $price = $firstOffer?->publicPrice;
 Los helpers tipados devuelven DTOs, no respuestas HTTP crudas:
 
 - Listados: `Ometra\HelaSdk\Dtos\DtoCollection`
-- Recursos: `OfferDto`, `ServiceDto`, `OrderDto`, `AddressDto`, `UserProfileDto`, etc.
+- Recursos: `OfferDto`, `ServiceDto`, `OrderDto`, `UserProfileDto`, etc.
 - Acciones sin recurso principal: `ApiResponseDto`
 
 Cada DTO conserva el payload original en `attributes`, expone `toArray()` y
@@ -82,7 +82,6 @@ Atajos disponibles inicialmente:
 - `serviceByMsisdn($msisdn)`, `serviceSupplementaries($msisdn)` y `serviceReplacements($msisdn)`
 - `validateActivationKey($data)`, `validateSimCard($data)` y `activateService($data)`
 - `createOrder($data)`, `order($id)`, `orderByMsisdn($msisdn)`, `orderPayment($id)`, `publishOrder($id)`, `processOrder($id)`, `cancelOrder($id)` y `addOrderPayment($id, $data)`
-- `shippingQuotes($query)`
 - `validatePayment($id)` y `cancelPayment($id)`
 
 ### Clients API de Auster
@@ -113,7 +112,6 @@ Atajos disponibles para `clients-api`:
 - `login($data)`, `signup($data)`, `requestPasswordReset($data)`, `validatePasswordResetToken($token)`, `resetPassword($token, $data)`, `logout()` y `logoutAll()`
 - `clientProfile()`, `userProfile()` y `simCards($query)`
 - `balance($query)`, `invoices($query)`, `invoice($id)` y `downloadInvoice($id)`
-- `addresses($query)`, `createAddress($data)`, `address($id)`, `updateAddress($id, $data)` y `deleteAddress($id)`
 - `catalogOffers($query)`
 - `cfdi($query)`, `cfdiOrders()`, `requestCfdi($data)` y `downloadCfdi($uid, $format)`
 - `orders($query)`, `order($id)` y `createOrder($data)`

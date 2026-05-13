@@ -3,7 +3,6 @@
 namespace Ometra\HelaSdk\Clients;
 
 use Illuminate\Http\Client\Response;
-use Ometra\HelaSdk\Dtos\AddressDto;
 use Ometra\HelaSdk\Dtos\ApiResponseDto;
 use Ometra\HelaSdk\Dtos\AuthTokenDto;
 use Ometra\HelaSdk\Dtos\DtoCollection;
@@ -130,45 +129,6 @@ class AusterClientsApiClient extends HelaAppClient
     public function downloadInvoice(int|string $invoiceId): Response
     {
         return $this->get('/clients-api/accounting/invoices/download/' . $invoiceId);
-    }
-
-    /**
-     * @param array<string, mixed> $query
-     *
-     * @return DtoCollection<AddressDto>
-     */
-    public function addresses(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/clients-api/addresses', $query), AddressDto::class);
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     */
-    public function createAddress(array $data): AddressDto|ApiResponseDto
-    {
-        $response = $this->post('/clients-api/addresses', $data);
-        $data = $this->responseData($response);
-
-        return is_array($data) ? AddressDto::from($data) : $this->apiResponse($response);
-    }
-
-    public function address(int|string $addressId): AddressDto
-    {
-        return $this->dto($this->get('/clients-api/addresses/' . $addressId), AddressDto::class);
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     */
-    public function updateAddress(int|string $addressId, array $data): AddressDto
-    {
-        return $this->dto($this->post('/clients-api/addresses/' . $addressId, $data), AddressDto::class);
-    }
-
-    public function deleteAddress(int|string $addressId): ApiResponseDto
-    {
-        return $this->apiResponse($this->delete('/clients-api/addresses/' . $addressId));
     }
 
     /**
