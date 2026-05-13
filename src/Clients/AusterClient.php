@@ -176,4 +176,19 @@ class AusterClient extends HelaAppClient
     {
         return $this->apiResponse($this->post('/api/payments/' . $paymentId . '/cancel'));
     }
+
+    public function searchMsisdns(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->get('/api/vinculacion/consulta', $data));
+    }
+
+    public function validateVinculacionMsisdns(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/api/vinculacion/msisdn/validate', $data));
+    }
+
+    public function vinculaPersonaFisica(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->postMultipart('/api/vinculacion/persona-fisica/vincula', $data));
+    }
 }

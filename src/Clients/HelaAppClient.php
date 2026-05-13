@@ -10,6 +10,7 @@ use Ometra\HelaSdk\Dtos\DataTransferObject;
 use Ometra\HelaSdk\Dtos\DtoCollection;
 use Ometra\HelaSdk\Exceptions\HelaRequestException;
 use Ometra\HelaSdk\Exceptions\MissingAppConfigurationException;
+use Illuminate\Http\UploadedFile;
 
 class HelaAppClient
 {
@@ -21,8 +22,7 @@ class HelaAppClient
         private readonly string $name,
         private readonly array $config,
         private readonly array $defaults = [],
-    ) {
-    }
+    ) {}
 
     public function name(): string
     {
@@ -112,6 +112,128 @@ class HelaAppClient
     public function postWithoutToken(string $uri, array $data = []): Response
     {
         return $this->httpWithoutToken()->post($this->uri($uri), $data);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function postMultipart(string $uri, array $data = []): Response
+    {
+        $multipart = [];
+
+        foreach ($data as $key => $value) {
+            if ($value === null) {
+                continue;
+            }
+
+            if ($value instanceof UploadedFile) {
+                if ($value->isValid()) {
+                    $multipart[] = $this->formatMultipartFile($key, $value);
+                }
+
+                continue;
+            }
+
+            if (is_array($value)) {
+                if (empty($value)) {
+                    continue;
+                }
+
+                $allFiles = collect($value)->every(
+                    fn($item) => $item instanceof UploadedFile
+                );
+
+                if ($allFiles) {
+                    foreach ($value as $index => $file) {
+                        if ($file instanceof UploadedFile && $file->isValid()) {
+                            $multipart[] = $this->formatMultipartFile(
+                                "{$key}[{$index}]",
+                                $file
+                            );
+                        }
+                    }
+
+                    continue;
+                }
+
+                foreach ($value as $item) {
+                    if ($item === null) {
+                        continue;
+                    }
+
+                    $multipart[] = $this->formatMultipartField(
+                        "{$key}[]",
+                        $item
+                    );
+                }
+
+                continue;
+            }
+
+            $multipart[] = $this->formatMultipartField($key, $value);
+        }
+
+        return $this->httpMultipart()
+            ->send('POST', $this->uri($uri), [
+                'multipart' => $multipart,
+            ]);
+    }
+
+    private function httpMultipart(): PendingRequest
+    {
+        $request = Http::baseUrl($this->baseUrl())
+            ->acceptJson()
+            ->timeout(120)
+            ->connectTimeout(30);
+
+        $token = $this->token();
+
+        if ($token !== null) {
+            $request = $request->withToken($token);
+        }
+
+        $source = $this->sourceApp();
+
+        if ($source !== null) {
+            $request = $request->withHeader('X-Hela-App', $source);
+        }
+
+        $retry = $this->retry();
+
+        if ($retry['times'] > 0) {
+            $request = $request->retry($retry['times'], $retry['sleep']);
+        }
+
+        return $request;
+    }
+
+    private function formatMultipartField(string $key, mixed $value): array
+    {
+        return [
+            'name' => $key,
+            'contents' => $this->multipartScalarValue($value),
+        ];
+    }
+
+    private function formatMultipartFile(string $key, UploadedFile $file): array
+    {
+        return [
+            'name' => $key,
+            'contents' => fopen($file->getRealPath(), 'r'),
+            'filename' => $file->getClientOriginalName(),
+        ];
+    }
+
+    private function multipartScalarValue(mixed $value): string
+    {
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+
+        return (string) $value;
     }
 
     /**
