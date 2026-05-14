@@ -94,6 +94,14 @@ class AusterClientsApiClient extends HelaAppClient
     }
 
     /**
+     * @param array<string, mixed> $data
+     */
+    public function heartbeat(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/clients-api/monitoring/heartbeat', $data));
+    }
+
+    /**
      * @param array<string, mixed> $query
      *
      * @return DtoCollection<GenericDto>

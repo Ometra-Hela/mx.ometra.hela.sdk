@@ -111,6 +111,7 @@ Atajos disponibles para `clients-api`:
 
 - `login($data)`, `signup($data)`, `requestPasswordReset($data)`, `validatePasswordResetToken($token)`, `resetPassword($token, $data)`, `logout()` y `logoutAll()`
 - `clientProfile()`, `userProfile()` y `simCards($query)`
+- `heartbeat($data)`
 - `balance($query)`, `invoices($query)`, `invoice($id)` y `downloadInvoice($id)`
 - `catalogOffers($query)`
 - `cfdi($query)`, `cfdiOrders()`, `requestCfdi($data)` y `downloadCfdi($uid, $format)`

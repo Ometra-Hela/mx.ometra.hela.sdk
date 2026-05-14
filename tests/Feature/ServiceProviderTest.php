@@ -281,6 +281,32 @@ class ServiceProviderTest extends TestCase
         Http::assertSent(function ($request) {
             return $request->url() === 'https://auster.example.test/clients-api/client-profile'
                 && $request->hasHeader('Authorization', 'Bearer API-client-token');
+            });
+    }
+
+    public function test_auster_clients_api_exposes_heartbeat_route(): void
+    {
+        Http::fake([
+            'https://auster.example.test/clients-api/monitoring/heartbeat' => Http::response([
+                'message' => 'Heartbeat received',
+            ]),
+        ]);
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+
+        $response = HelaSdkFacade::auster()->clientsApiAsClient('client-token')->heartbeat([
+            'status' => 1,
+            'memory_usage' => 123456,
+        ]);
+
+        $this->assertSame('Heartbeat received', $response->message);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://auster.example.test/clients-api/monitoring/heartbeat'
+                && $request->method() === 'POST'
+                && $request->hasHeader('Authorization', 'Bearer API-client-token')
+                && $request['status'] === 1
+                && $request['memory_usage'] === 123456;
         });
     }
 
