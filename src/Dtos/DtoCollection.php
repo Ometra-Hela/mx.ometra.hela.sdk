@@ -105,7 +105,7 @@ final class DtoCollection implements Arrayable, Countable, IteratorAggregate, Js
             return $attributes['items'];
         }
 
-        foreach (['orders', 'addresses', 'services', 'users', 'invoices', 'portabilities', 'sim_cards', 'offers'] as $key) {
+        foreach (['orders', 'services', 'users', 'invoices', 'portabilities', 'sim_cards', 'offers'] as $key) {
             if (isset($attributes[$key]) && is_array($attributes[$key])) {
                 return $attributes[$key];
             }
