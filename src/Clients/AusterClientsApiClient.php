@@ -102,6 +102,30 @@ class AusterClientsApiClient extends HelaAppClient
     }
 
     /**
+     * @param array<string, mixed> $data
+     */
+    public function createInstanceUser(array $data): UserProfileDto
+    {
+        return $this->dto($this->post('/clients-api/instances/create/user', $data), UserProfileDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function updateInstanceUserByEmail(string $email, array $data): UserProfileDto
+    {
+        return $this->dto(
+            $this->post('/clients-api/instances/update/user/' . rawurlencode($email), $data),
+            UserProfileDto::class,
+        );
+    }
+
+    public function deleteInstanceUserByEmail(string $email): ApiResponseDto
+    {
+        return $this->apiResponse($this->delete('/clients-api/instances/delete/user/' . rawurlencode($email)));
+    }
+
+    /**
      * @param array<string, mixed> $query
      *
      * @return DtoCollection<GenericDto>

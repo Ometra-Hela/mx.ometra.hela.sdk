@@ -28,6 +28,7 @@ class ServiceProviderTest extends TestCase
     {
         $this->assertSame(30, config('hela-sdk.timeout'));
         $this->assertSame(['times' => 0, 'sleep' => 100], config('hela-sdk.retry'));
+        $this->assertSame(1000, config('hela-sdk.slow_log_ms'));
     }
 
     public function test_facade_resolves_the_sdk(): void
@@ -308,6 +309,99 @@ class ServiceProviderTest extends TestCase
                 && $request['status'] === 1
                 && $request['memory_usage'] === 123456;
         });
+    }
+
+    public function test_auster_clients_api_sends_query_params_and_preserves_pagination_meta(): void
+    {
+        Http::fake([
+            'https://auster.example.test/clients-api/orders*' => Http::response([
+                'message' => 'Ordenes obtenidas correctamente',
+                'data' => [
+                    'current_page' => 2,
+                    'data' => [
+                        [
+                            'id_order' => 501,
+                            'order_total' => 199.99,
+                        ],
+                    ],
+                    'from' => 16,
+                    'last_page' => 4,
+                    'per_page' => 15,
+                    'to' => 30,
+                    'total' => 58,
+                ],
+            ]),
+        ]);
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+
+        $orders = HelaSdkFacade::auster()->clientsApiAsClient('client-token')->orders([
+            'paginate' => true,
+            'page' => 2,
+            'per_page' => 15,
+            'search' => '5551234567',
+        ]);
+
+        $this->assertInstanceOf(DtoCollection::class, $orders);
+        $this->assertSame(1, $orders->count());
+        $this->assertSame(2, $orders->meta['current_page']);
+        $this->assertSame(15, $orders->meta['per_page']);
+        $this->assertSame(58, $orders->meta['total']);
+        $this->assertInstanceOf(OrderDto::class, $orders->first());
+        $this->assertSame(501, $orders->first()->id);
+
+        Http::assertSent(function ($request) {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return str_starts_with($request->url(), 'https://auster.example.test/clients-api/orders?')
+                && $request->hasHeader('Authorization', 'Bearer API-client-token')
+                && (string) ($query['paginate'] ?? '') === '1'
+                && (string) ($query['page'] ?? '') === '2'
+                && (string) ($query['per_page'] ?? '') === '15'
+                && ($query['search'] ?? null) === '5551234567';
+        });
+    }
+
+    public function test_auster_clients_api_exposes_instance_user_sync_routes(): void
+    {
+        Http::fake([
+            'https://auster.example.test/clients-api/instances/create/user' => Http::response([
+                'data' => [
+                    'uri_clientUser' => 'user-1',
+                    'email' => 'user@example.test',
+                    'name' => 'Test User',
+                ],
+            ], 201),
+            'https://auster.example.test/clients-api/instances/update/user/user%40example.test' => Http::response([
+                'data' => [
+                    'uri_clientUser' => 'user-1',
+                    'email' => 'user@example.test',
+                    'name' => 'Updated User',
+                ],
+            ]),
+            'https://auster.example.test/clients-api/instances/delete/user/user%40example.test' => Http::response([
+                'message' => 'Usuario eliminado correctamente',
+            ]),
+        ]);
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+
+        $client = HelaSdkFacade::auster()->clientsApiAsClient('client-token');
+        $created = $client->createInstanceUser([
+            'email' => 'user@example.test',
+            'name' => 'Test User',
+            'password' => 'secret',
+        ]);
+        $updated = $client->updateInstanceUserByEmail('user@example.test', [
+            'name' => 'Updated User',
+        ]);
+        $deleted = $client->deleteInstanceUserByEmail('user@example.test');
+
+        $this->assertInstanceOf(UserProfileDto::class, $created);
+        $this->assertSame('user@example.test', $created->email);
+        $this->assertSame('Updated User', $updated->name);
+        $this->assertSame('Usuario eliminado correctamente', $deleted->message);
+        Http::assertSentCount(3);
     }
 
     public function test_auster_clients_api_exposes_service_change_routes(): void

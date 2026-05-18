@@ -37,6 +37,7 @@ return [
         'times' => (int) env('HELA_SDK_RETRY_TIMES', 0),
         'sleep' => (int) env('HELA_SDK_RETRY_SLEEP', 100),
     ],
+    'slow_log_ms' => (int) env('HELA_SDK_SLOW_LOG_MS', 1000),
 
     'base_url' => env('HELA_SDK_BASE_URL'),
     'api_key' => env('HELA_SDK_API_KEY'),
