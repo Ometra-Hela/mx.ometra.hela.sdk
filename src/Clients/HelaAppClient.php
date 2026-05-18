@@ -4,13 +4,14 @@ namespace Ometra\HelaSdk\Clients;
 
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Ometra\HelaSdk\Dtos\ApiResponseDto;
 use Ometra\HelaSdk\Dtos\DataTransferObject;
 use Ometra\HelaSdk\Dtos\DtoCollection;
 use Ometra\HelaSdk\Exceptions\HelaRequestException;
 use Ometra\HelaSdk\Exceptions\MissingAppConfigurationException;
-use Illuminate\Http\UploadedFile;
 
 class HelaAppClient
 {
@@ -95,7 +96,12 @@ class HelaAppClient
      */
     public function get(string $uri, array $query = []): Response
     {
-        return $this->http()->get($this->uri($uri), $query);
+        return $this->sendWithInstrumentation(
+            'GET',
+            $uri,
+            $query,
+            fn (): Response => $this->http()->get($this->uri($uri), $query),
+        );
     }
 
     /**
@@ -103,7 +109,12 @@ class HelaAppClient
      */
     public function post(string $uri, array $data = []): Response
     {
-        return $this->http()->post($this->uri($uri), $data);
+        return $this->sendWithInstrumentation(
+            'POST',
+            $uri,
+            $data,
+            fn (): Response => $this->http()->post($this->uri($uri), $data),
+        );
     }
 
     /**
@@ -111,7 +122,12 @@ class HelaAppClient
      */
     public function postWithoutToken(string $uri, array $data = []): Response
     {
-        return $this->httpWithoutToken()->post($this->uri($uri), $data);
+        return $this->sendWithInstrumentation(
+            'POST',
+            $uri,
+            $data,
+            fn (): Response => $this->httpWithoutToken()->post($this->uri($uri), $data),
+        );
     }
 
     /**
@@ -176,10 +192,15 @@ class HelaAppClient
             $multipart[] = $this->formatMultipartField($key, $value);
         }
 
-        return $this->httpMultipart()
-            ->send('POST', $this->uri($uri), [
-                'multipart' => $multipart,
-            ]);
+        return $this->sendWithInstrumentation(
+            'POST',
+            $uri,
+            $data,
+            fn (): Response => $this->httpMultipart()
+                ->send('POST', $this->uri($uri), [
+                    'multipart' => $multipart,
+                ]),
+        );
     }
 
     private function httpMultipart(): PendingRequest
@@ -241,7 +262,12 @@ class HelaAppClient
      */
     public function put(string $uri, array $data = []): Response
     {
-        return $this->http()->put($this->uri($uri), $data);
+        return $this->sendWithInstrumentation(
+            'PUT',
+            $uri,
+            $data,
+            fn (): Response => $this->http()->put($this->uri($uri), $data),
+        );
     }
 
     /**
@@ -249,7 +275,12 @@ class HelaAppClient
      */
     public function patch(string $uri, array $data = []): Response
     {
-        return $this->http()->patch($this->uri($uri), $data);
+        return $this->sendWithInstrumentation(
+            'PATCH',
+            $uri,
+            $data,
+            fn (): Response => $this->http()->patch($this->uri($uri), $data),
+        );
     }
 
     /**
@@ -257,7 +288,12 @@ class HelaAppClient
      */
     public function delete(string $uri, array $data = []): Response
     {
-        return $this->http()->delete($this->uri($uri), $data);
+        return $this->sendWithInstrumentation(
+            'DELETE',
+            $uri,
+            $data,
+            fn (): Response => $this->http()->delete($this->uri($uri), $data),
+        );
     }
 
     protected function apiResponse(Response $response): ApiResponseDto
@@ -350,5 +386,57 @@ class HelaAppClient
         $source = $this->config['source'] ?? $this->defaults['source'] ?? null;
 
         return is_string($source) && $source !== '' ? $source : null;
+    }
+
+    /**
+     * @param array<mixed> $payload
+     */
+    private function sendWithInstrumentation(string $method, string $uri, array $payload, callable $callback): Response
+    {
+        $start = hrtime(true);
+        $response = null;
+
+        try {
+            $response = $callback();
+
+            return $response;
+        } finally {
+            $durationMs = (int) round((hrtime(true) - $start) / 1_000_000);
+            $thresholdMs = $this->slowLogMs();
+
+            if ($thresholdMs > 0 && $durationMs >= $thresholdMs) {
+                $this->logSlowRequest($method, $uri, $payload, $durationMs, $response);
+            }
+        }
+    }
+
+    /**
+     * @param array<mixed> $payload
+     */
+    private function logSlowRequest(
+        string $method,
+        string $uri,
+        array $payload,
+        int $durationMs,
+        ?Response $response,
+    ): void {
+        try {
+            Log::warning('Slow Hela SDK request.', [
+                'client' => $this->name,
+                'method' => strtoupper($method),
+                'uri' => $this->uri($uri),
+                'duration_ms' => $durationMs,
+                'threshold_ms' => $this->slowLogMs(),
+                'status' => $response?->status(),
+                'payload_keys' => array_values(array_map('strval', array_keys($payload))),
+            ]);
+        } catch (\Throwable) {
+            //
+        }
+    }
+
+    private function slowLogMs(): int
+    {
+        return (int) ($this->config['slow_log_ms'] ?? $this->defaults['slow_log_ms'] ?? 0);
     }
 }
