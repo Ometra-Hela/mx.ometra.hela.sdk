@@ -65,6 +65,26 @@ class AusterClient extends HelaAppClient
         return $this->dto($this->get('/api/catalogs/offers/' . $offerId), OfferDto::class, 'offer');
     }
 
+    /**
+     * @param array<string, mixed> $query
+     *
+     * @return DtoCollection<GenericDto>
+     */
+    public function clients(array $query = []): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/api/clients', $query), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     *
+     * @return DtoCollection<ServiceDto>
+     */
+    public function clientServices(int|string $clientId, array $query = []): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/api/clients/' . $clientId . '/services', $query), ServiceDto::class);
+    }
+
     public function portabilitiesByMsisdn(string $msisdn): GenericDto
     {
         return $this->dto($this->get('/api/catalogs/portability/msisdn/' . $msisdn), GenericDto::class);
@@ -73,6 +93,22 @@ class AusterClient extends HelaAppClient
     public function serviceByMsisdn(string $msisdn): ServiceDto
     {
         return $this->dto($this->get('/api/services/msisdn/' . $msisdn), ServiceDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function executeAlizePortability(int|string $portabilityId, array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/api/alize/portabilities/' . $portabilityId . '/execute', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function completeAlizePortability(int|string $portabilityId, array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/api/alize/portabilities/' . $portabilityId . '/complete', $data));
     }
 
     /**

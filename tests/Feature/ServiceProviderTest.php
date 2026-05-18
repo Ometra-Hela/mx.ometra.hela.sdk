@@ -7,6 +7,7 @@ use Ometra\HelaSdk\Clients\AusterClient;
 use Ometra\HelaSdk\Dtos\ApiResponseDto;
 use Ometra\HelaSdk\Dtos\AuthTokenDto;
 use Ometra\HelaSdk\Dtos\DtoCollection;
+use Ometra\HelaSdk\Dtos\GenericDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
@@ -174,18 +175,45 @@ class ServiceProviderTest extends TestCase
             'https://auster.example.test/api/orders/100/process' => Http::response([
                 'message' => 'Orden procesada',
             ]),
+            'https://auster.example.test/api/clients?filter=Acme' => Http::response([
+                'data' => [
+                    ['id_client' => 'CLI-1', 'name' => 'Acme', 'email' => 'ops@example.test'],
+                ],
+            ]),
+            'https://auster.example.test/api/clients/CLI-1/services?status=ACTIVE' => Http::response([
+                'data' => [
+                    ['id_service' => 20, 'id_client' => 'CLI-1', 'msisdn' => '525500000001', 'status' => 'ACTIVE'],
+                ],
+            ]),
+            'https://auster.example.test/api/alize/portabilities/10/execute' => Http::response([
+                'message' => 'Portability execute accepted.',
+            ]),
+            'https://auster.example.test/api/alize/portabilities/10/complete' => Http::response([
+                'message' => 'Portability completion applied.',
+            ]),
         ]);
 
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
 
         $service = HelaSdkFacade::auster()->serviceByMsisdn('525512345678');
         $process = HelaSdkFacade::auster()->processOrder(100);
+        $clients = HelaSdkFacade::auster()->clients(['filter' => 'Acme']);
+        $services = HelaSdkFacade::auster()->clientServices('CLI-1', ['status' => 'ACTIVE']);
+        $execute = HelaSdkFacade::auster()->executeAlizePortability(10, ['idempotency_key' => 'key']);
+        $complete = HelaSdkFacade::auster()->completeAlizePortability(10, ['idempotency_key' => 'key']);
 
         $this->assertInstanceOf(ServiceDto::class, $service);
         $this->assertSame('525512345678', $service->msisdn);
         $this->assertInstanceOf(ApiResponseDto::class, $process);
         $this->assertSame('Orden procesada', $process->message);
-        Http::assertSentCount(2);
+        $this->assertInstanceOf(DtoCollection::class, $clients);
+        $this->assertInstanceOf(GenericDto::class, $clients->first());
+        $this->assertSame('CLI-1', $clients->first()->id_client);
+        $this->assertInstanceOf(DtoCollection::class, $services);
+        $this->assertSame('525500000001', $services->first()->msisdn);
+        $this->assertSame('Portability execute accepted.', $execute->message);
+        $this->assertSame('Portability completion applied.', $complete->message);
+        Http::assertSentCount(6);
     }
 
     public function test_auster_clients_api_without_explicit_token_does_not_send_authorization(): void
