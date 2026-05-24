@@ -192,6 +192,14 @@ class ServiceProviderTest extends TestCase
             'https://auster.example.test/api/alize/portabilities/10/complete' => Http::response([
                 'message' => 'Portability completion applied.',
             ]),
+            'https://auster.example.test/api/support/services/525512345678/suspend-stolen' => Http::response([
+                'message' => 'Service suspended for theft.',
+                'data' => ['reason' => 'stolen'],
+            ]),
+            'https://auster.example.test/api/support/imei/359881234567890/lock' => Http::response([
+                'message' => 'IMEI locked by support.',
+                'data' => ['imei' => '359881234567890'],
+            ]),
         ]);
 
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
@@ -202,6 +210,12 @@ class ServiceProviderTest extends TestCase
         $services = HelaSdkFacade::auster()->clientServices('CLI-1', ['status' => 'ACTIVE']);
         $execute = HelaSdkFacade::auster()->executeAlizePortability(10, ['idempotency_key' => 'key']);
         $complete = HelaSdkFacade::auster()->completeAlizePortability(10, ['idempotency_key' => 'key']);
+        $suspendStolen = HelaSdkFacade::auster()->supportSuspendServiceForTheft('525512345678', [
+            'incident_folio' => 'STR-20260523-0001',
+        ]);
+        $lockImei = HelaSdkFacade::auster()->supportLockImei('359881234567890', [
+            'incident_folio' => 'STR-20260523-0001',
+        ]);
 
         $this->assertInstanceOf(ServiceDto::class, $service);
         $this->assertSame('525512345678', $service->msisdn);
@@ -214,7 +228,9 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('525500000001', $services->first()->msisdn);
         $this->assertSame('Portability execute accepted.', $execute->message);
         $this->assertSame('Portability completion applied.', $complete->message);
-        Http::assertSentCount(6);
+        $this->assertSame('Service suspended for theft.', $suspendStolen->message);
+        $this->assertSame('IMEI locked by support.', $lockImei->message);
+        Http::assertSentCount(8);
     }
 
     public function test_auster_clients_api_without_explicit_token_does_not_send_authorization(): void

@@ -112,6 +112,22 @@ class AusterClient extends HelaAppClient
     }
 
     /**
+     * @param array<string, mixed> $data
+     */
+    public function supportSuspendServiceForTheft(string $msisdn, array $data = []): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/api/support/services/' . rawurlencode($msisdn) . '/suspend-stolen', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function supportLockImei(string $imei, array $data = []): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/api/support/imei/' . rawurlencode($imei) . '/lock', $data));
+    }
+
+    /**
      * @return DtoCollection<OfferDto>
      */
     public function serviceSupplementaries(string $msisdn): DtoCollection
