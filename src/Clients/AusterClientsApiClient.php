@@ -9,7 +9,9 @@ use Ometra\HelaSdk\Dtos\DtoCollection;
 use Ometra\HelaSdk\Dtos\GenericDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
+use Ometra\HelaSdk\Dtos\ServiceBulkOperationDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
+use Ometra\HelaSdk\Dtos\ServiceGroupDto;
 use Ometra\HelaSdk\Dtos\UserProfileDto;
 
 class AusterClientsApiClient extends HelaAppClient
@@ -174,6 +176,14 @@ class AusterClientsApiClient extends HelaAppClient
     }
 
     /**
+     * @return DtoCollection<GenericDto>
+     */
+    public function paymentMethods(): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/clients-api/catalogs/payment-methods'), GenericDto::class);
+    }
+
+    /**
      * @param array<string, mixed> $query
      *
      * @return DtoCollection<GenericDto>
@@ -271,6 +281,94 @@ class AusterClientsApiClient extends HelaAppClient
     public function services(array $query = []): DtoCollection
     {
         return $this->dtoCollection($this->get('/clients-api/services', $query), ServiceDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     *
+     * @return DtoCollection<ServiceGroupDto>
+     */
+    public function serviceGroups(array $query = []): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/clients-api/service-groups', $query), ServiceGroupDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function createServiceGroup(array $data): ServiceGroupDto
+    {
+        return $this->dto($this->post('/clients-api/service-groups', $data), ServiceGroupDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function updateServiceGroup(int|string $groupId, array $data): ServiceGroupDto
+    {
+        return $this->dto($this->patch('/clients-api/service-groups/' . $groupId, $data), ServiceGroupDto::class);
+    }
+
+    public function deleteServiceGroup(int|string $groupId): ApiResponseDto
+    {
+        return $this->apiResponse($this->delete('/clients-api/service-groups/' . $groupId));
+    }
+
+    /**
+     * @param array<int, int|string> $serviceIds
+     */
+    public function syncServiceGroupServices(int|string $groupId, array $serviceIds): GenericDto
+    {
+        return $this->dto(
+            $this->put('/clients-api/service-groups/' . $groupId . '/services', ['service_ids' => $serviceIds]),
+            GenericDto::class,
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function serviceBulkCapabilities(array $payload): GenericDto
+    {
+        return $this->dto($this->post('/clients-api/services/bulk-actions/capabilities', $payload), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function previewServiceBulkAction(array $payload): GenericDto
+    {
+        return $this->dto($this->post('/clients-api/services/bulk-actions/preview', $payload), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function storeServiceBulkAction(array $payload): ServiceBulkOperationDto
+    {
+        return $this->dto(
+            $this->post('/clients-api/services/bulk-actions', $payload),
+            ServiceBulkOperationDto::class,
+            'operation',
+        );
+    }
+
+    public function serviceBulkOperation(int|string $operationId): ServiceBulkOperationDto
+    {
+        return $this->dto(
+            $this->get('/clients-api/services/bulk-operations/' . $operationId),
+            ServiceBulkOperationDto::class,
+            'operation',
+        );
+    }
+
+    public function retryServiceBulkOperation(int|string $operationId): ServiceBulkOperationDto
+    {
+        return $this->dto(
+            $this->post('/clients-api/services/bulk-operations/' . $operationId . '/retry'),
+            ServiceBulkOperationDto::class,
+            'operation',
+        );
     }
 
     public function service(string $msisdn): ServiceDto

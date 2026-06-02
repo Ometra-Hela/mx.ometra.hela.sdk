@@ -10,7 +10,9 @@ use Ometra\HelaSdk\Dtos\DtoCollection;
 use Ometra\HelaSdk\Dtos\GenericDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
+use Ometra\HelaSdk\Dtos\ServiceBulkOperationDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
+use Ometra\HelaSdk\Dtos\ServiceGroupDto;
 use Ometra\HelaSdk\Dtos\UserProfileDto;
 use Ometra\HelaSdk\Exceptions\HelaRequestException;
 use Ometra\HelaSdk\Facades\HelaSdk as HelaSdkFacade;
@@ -154,12 +156,29 @@ class ServiceProviderTest extends TestCase
         ])->toArray();
 
         $this->assertSame(10, $service['id']);
+        $this->assertNull($service['groupId']);
         $this->assertSame('2026-06-01', $service['dtExpiry']);
         $this->assertSame(2, $service['linkAttempts']);
         $this->assertSame('Plan 10', $service['offer']['publicName']);
         $this->assertSame('PRE', $service['offer']['serviceType']);
         $this->assertSame('2026-05-01', $service['lastTopup']['dtExecution']);
         $this->assertArrayNotHasKey('dt_expiry', $service);
+    }
+
+    public function test_service_dto_exposes_group_fields_and_preserves_attributes(): void
+    {
+        $service = ServiceDto::from([
+            'id_service' => 10,
+            'id_serviceGroup' => 7,
+            'group_name' => 'Operaciones',
+            'group_icon' => 'briefcase',
+        ]);
+
+        $this->assertSame(7, $service->groupId);
+        $this->assertSame('Operaciones', $service->groupName);
+        $this->assertSame('briefcase', $service->groupIcon);
+        $this->assertSame(7, $service->id_serviceGroup);
+        $this->assertSame('Operaciones', $service->group_name);
     }
 
     public function test_auster_client_exposes_known_api_routes(): void
@@ -495,6 +514,92 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('IMEI locked', $imeiLock->message);
         $this->assertSame('IMEI unlocked', $imeiUnlock->message);
         Http::assertSentCount(7);
+    }
+
+    public function test_auster_clients_api_exposes_service_groups_and_bulk_routes(): void
+    {
+        Http::fake(function ($request) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+            $method = $request->method();
+
+            return match ([$method, $path]) {
+                ['GET', '/clients-api/catalogs/payment-methods'] => Http::response([
+                    'data' => [['value' => 'SPEI', 'label' => 'Transferencia']],
+                ]),
+                ['GET', '/clients-api/service-groups'] => Http::response([
+                    'data' => [[
+                        'id_serviceGroup' => 3,
+                        'name' => 'Operaciones',
+                        'icon' => 'briefcase',
+                        'services_count' => 5,
+                    ]],
+                ]),
+                ['POST', '/clients-api/service-groups'] => Http::response([
+                    'data' => ['id_serviceGroup' => 4, 'name' => 'Ventas', 'icon' => 'users'],
+                ], 201),
+                ['PATCH', '/clients-api/service-groups/4'] => Http::response([
+                    'data' => ['id_serviceGroup' => 4, 'name' => 'Ventas MX', 'icon' => 'users'],
+                ]),
+                ['DELETE', '/clients-api/service-groups/4'] => Http::response([
+                    'message' => 'Grupo eliminado correctamente',
+                ]),
+                ['PUT', '/clients-api/service-groups/3/services'] => Http::response([
+                    'data' => ['assigned_ids' => [10, 11]],
+                ]),
+                ['POST', '/clients-api/services/bulk-actions/capabilities'] => Http::response([
+                    'ok' => true,
+                    'capabilities' => ['actions' => [['id' => 'suspend', 'available' => true]]],
+                ]),
+                ['POST', '/clients-api/services/bulk-actions/preview'] => Http::response([
+                    'ok' => true,
+                    'preview' => ['action' => 'suspend', 'eligible_count' => 2],
+                ]),
+                ['POST', '/clients-api/services/bulk-actions'] => Http::response([
+                    'ok' => true,
+                    'operation' => ['id_serviceBulkOperation' => 77, 'action' => 'suspend', 'status' => 'queued'],
+                ], 202),
+                ['GET', '/clients-api/services/bulk-operations/77'] => Http::response([
+                    'ok' => true,
+                    'operation' => ['id_serviceBulkOperation' => 77, 'status' => 'completed', 'is_terminal' => true],
+                ]),
+                ['POST', '/clients-api/services/bulk-operations/77/retry'] => Http::response([
+                    'ok' => true,
+                    'operation' => ['id_serviceBulkOperation' => 77, 'status' => 'queued'],
+                ], 202),
+                default => Http::response(['message' => 'Unexpected request'], 404),
+            };
+        });
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+        $client = HelaSdkFacade::auster()->clientsApiAsClient('client-token');
+
+        $paymentMethods = $client->paymentMethods();
+        $groups = $client->serviceGroups();
+        $created = $client->createServiceGroup(['name' => 'Ventas', 'icon' => 'users']);
+        $updated = $client->updateServiceGroup(4, ['name' => 'Ventas MX']);
+        $deleted = $client->deleteServiceGroup(4);
+        $sync = $client->syncServiceGroupServices(3, [10, 11]);
+        $capabilities = $client->serviceBulkCapabilities(['selection' => ['mode' => 'ids', 'ids' => [10, 11]]]);
+        $preview = $client->previewServiceBulkAction(['action' => 'suspend', 'selection' => ['mode' => 'ids', 'ids' => [10, 11]]]);
+        $stored = $client->storeServiceBulkAction(['action' => 'suspend', 'confirmed' => true, 'selection' => ['mode' => 'ids', 'ids' => [10, 11]]]);
+        $operation = $client->serviceBulkOperation(77);
+        $retry = $client->retryServiceBulkOperation(77);
+
+        $this->assertInstanceOf(DtoCollection::class, $paymentMethods);
+        $this->assertSame('SPEI', $paymentMethods->first()->value);
+        $this->assertInstanceOf(ServiceGroupDto::class, $groups->first());
+        $this->assertSame(3, $groups->first()->idServiceGroup);
+        $this->assertSame('Ventas', $created->name);
+        $this->assertSame('Ventas MX', $updated->name);
+        $this->assertSame('Grupo eliminado correctamente', $deleted->message);
+        $this->assertSame([10, 11], $sync->assigned_ids);
+        $this->assertSame('suspend', $capabilities->capabilities['actions'][0]['id']);
+        $this->assertSame(2, $preview->preview['eligible_count']);
+        $this->assertInstanceOf(ServiceBulkOperationDto::class, $stored);
+        $this->assertSame(77, $stored->idServiceBulkOperation);
+        $this->assertTrue($operation->isTerminal);
+        $this->assertSame('queued', $retry->status);
+        Http::assertSentCount(11);
     }
 
     public function test_failed_responses_throw_structured_exception(): void
