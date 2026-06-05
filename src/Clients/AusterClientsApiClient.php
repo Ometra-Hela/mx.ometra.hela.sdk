@@ -132,9 +132,28 @@ class AusterClientsApiClient extends HelaAppClient
      *
      * @return DtoCollection<GenericDto>
      */
-    public function simCards(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/clients-api/sim-cards', $query), GenericDto::class);
+    public function simCards(
+        array $query = [],
+        string|int|float|null $filter = null,
+        ?string $product = null,
+        ?string $type = null,
+        string|int|bool|null $status = null,
+        ?bool $paginate = null,
+        ?int $page = null,
+        ?int $perPage = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/clients-api/sim-cards', $this->mergeQuery($query, compact(
+                'filter',
+                'product',
+                'type',
+                'status',
+                'paginate',
+                'page',
+                'perPage',
+            ))),
+            GenericDto::class,
+        );
     }
 
     /**
@@ -150,9 +169,26 @@ class AusterClientsApiClient extends HelaAppClient
      *
      * @return DtoCollection<GenericDto>
      */
-    public function invoices(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/clients-api/accounting/invoices', $query), GenericDto::class);
+    public function invoices(
+        array $query = [],
+        string|int|float|null $filter = null,
+        int|string|null $year = null,
+        int|string|null $month = null,
+        ?bool $paginate = null,
+        ?int $page = null,
+        ?int $perPage = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/clients-api/accounting/invoices', $this->mergeQuery($query, compact(
+                'filter',
+                'year',
+                'month',
+                'paginate',
+                'page',
+                'perPage',
+            ))),
+            GenericDto::class,
+        );
     }
 
     public function invoice(int|string $invoiceId): GenericDto
@@ -170,9 +206,24 @@ class AusterClientsApiClient extends HelaAppClient
      *
      * @return DtoCollection<OfferDto>
      */
-    public function catalogOffers(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/clients-api/catalogs/offers', $query), OfferDto::class);
+    public function catalogOffers(
+        array $query = [],
+        string|int|float|null $filter = null,
+        string|int|bool|null $status = null,
+        ?string $product = null,
+        array|string|null $serviceType = null,
+        ?bool $allowsNewLineActivation = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/clients-api/catalogs/offers', $this->mergeQuery($query, compact(
+                'filter',
+                'status',
+                'product',
+                'serviceType',
+                'allowsNewLineActivation',
+            ))),
+            OfferDto::class,
+        );
     }
 
     /**
@@ -188,9 +239,26 @@ class AusterClientsApiClient extends HelaAppClient
      *
      * @return DtoCollection<GenericDto>
      */
-    public function cfdi(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/clients-api/cfdi', $query), GenericDto::class);
+    public function cfdi(
+        array $query = [],
+        string|int|float|null $filter = null,
+        int|string|null $year = null,
+        int|string|null $month = null,
+        ?bool $paginate = null,
+        ?int $page = null,
+        ?int $perPage = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/clients-api/cfdi', $this->mergeQuery($query, compact(
+                'filter',
+                'year',
+                'month',
+                'paginate',
+                'page',
+                'perPage',
+            ))),
+            GenericDto::class,
+        );
     }
 
     /**
@@ -219,9 +287,28 @@ class AusterClientsApiClient extends HelaAppClient
      *
      * @return DtoCollection<OrderDto>
      */
-    public function orders(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/clients-api/orders', $query), OrderDto::class);
+    public function orders(
+        array $query = [],
+        string|int|float|null $filter = null,
+        ?string $type = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        ?bool $paginate = null,
+        ?int $page = null,
+        ?int $perPage = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/clients-api/orders', $this->mergeQuery($query, compact(
+                'filter',
+                'type',
+                'dateFrom',
+                'dateTo',
+                'paginate',
+                'page',
+                'perPage',
+            ))),
+            OrderDto::class,
+        );
     }
 
     public function order(int|string $orderId): OrderDto
@@ -278,9 +365,38 @@ class AusterClientsApiClient extends HelaAppClient
      *
      * @return DtoCollection<ServiceDto>
      */
-    public function services(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/clients-api/services', $query), ServiceDto::class);
+    public function services(
+        array $query = [],
+        string|int|float|null $filter = null,
+        array|string|null $product = null,
+        array|string|null $serviceType = null,
+        array|string|null $status = null,
+        ?string $imei = null,
+        int|string|null $groupId = null,
+        ?bool $onlyActive = null,
+        ?bool $paginate = null,
+        ?int $page = null,
+        ?int $perPage = null,
+        ?string $sort = null,
+        ?string $direction = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/clients-api/services', $this->mergeQuery($query, compact(
+                'filter',
+                'product',
+                'serviceType',
+                'status',
+                'imei',
+                'groupId',
+                'onlyActive',
+                'paginate',
+                'page',
+                'perPage',
+                'sort',
+                'direction',
+            ))),
+            ServiceDto::class,
+        );
     }
 
     /**
@@ -288,9 +404,22 @@ class AusterClientsApiClient extends HelaAppClient
      *
      * @return DtoCollection<ServiceGroupDto>
      */
-    public function serviceGroups(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/clients-api/service-groups', $query), ServiceGroupDto::class);
+    public function serviceGroups(
+        array $query = [],
+        string|int|float|null $filter = null,
+        ?bool $paginate = null,
+        ?int $page = null,
+        ?int $perPage = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/clients-api/service-groups', $this->mergeQuery($query, compact(
+                'filter',
+                'paginate',
+                'page',
+                'perPage',
+            ))),
+            ServiceGroupDto::class,
+        );
     }
 
     /**
@@ -494,9 +623,22 @@ class AusterClientsApiClient extends HelaAppClient
      *
      * @return DtoCollection<UserProfileDto>
      */
-    public function users(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/clients-api/users', $query), UserProfileDto::class);
+    public function users(
+        array $query = [],
+        string|int|float|null $filter = null,
+        ?bool $paginate = null,
+        ?int $page = null,
+        ?int $perPage = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/clients-api/users', $this->mergeQuery($query, compact(
+                'filter',
+                'paginate',
+                'page',
+                'perPage',
+            ))),
+            UserProfileDto::class,
+        );
     }
 
     public function user(string $clientUserUri): UserProfileDto

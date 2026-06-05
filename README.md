@@ -48,7 +48,7 @@ y se enviara como `API-{token}`.
 ```php
 use Ometra\HelaSdk\Facades\HelaSdk;
 
-$offers = HelaSdk::auster()->offers();
+$offers = HelaSdk::auster()->offers(status: 'active');
 $service = HelaSdk::auster()->serviceByMsisdn('525512345678');
 $order = HelaSdk::auster()->order(100);
 
@@ -90,9 +90,16 @@ Atajos disponibles inicialmente:
 use Ometra\HelaSdk\Facades\HelaSdk;
 
 $profile = HelaSdk::auster()->clientsApi()->clientProfile();
-$services = HelaSdk::auster()->clientsApi()->services();
+$services = HelaSdk::auster()->clientsApi()->services(filter: '525512345678');
 $service = HelaSdk::auster()->clientsApi()->service('525512345678');
 ```
+
+Las busquedas textuales en Auster usan el query param `filter`. Usa ese nombre
+en listados como `catalogOffers(filter: 'Plan 20')`,
+`services(filter: '525512345678')`, `orders(filter: '5551234567')`,
+`simCards(filter: 'ICCID')`, `invoices(filter: 'folio')` y
+`cfdi(filter: 'UUID')`. Los metodos siguen aceptando `array $query = []` para
+compatibilidad y los named arguments tienen precedencia sobre ese arreglo.
 
 Para llamar con un token de usuario devuelto por login:
 

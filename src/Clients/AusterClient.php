@@ -55,9 +55,24 @@ class AusterClient extends HelaAppClient
      *
      * @return DtoCollection<OfferDto>
      */
-    public function offers(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/api/catalogs/offers', $query), OfferDto::class);
+    public function offers(
+        array $query = [],
+        string|int|float|null $filter = null,
+        string|int|bool|null $status = null,
+        ?string $product = null,
+        array|string|null $serviceType = null,
+        ?bool $allowsNewLineActivation = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/api/catalogs/offers', $this->mergeQuery($query, compact(
+                'filter',
+                'status',
+                'product',
+                'serviceType',
+                'allowsNewLineActivation',
+            ))),
+            OfferDto::class,
+        );
     }
 
     public function offer(int|string $offerId): OfferDto
@@ -70,9 +85,15 @@ class AusterClient extends HelaAppClient
      *
      * @return DtoCollection<GenericDto>
      */
-    public function clients(array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/api/clients', $query), GenericDto::class);
+    public function clients(
+        array $query = [],
+        string|int|float|null $filter = null,
+        ?string $type = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/api/clients', $this->mergeQuery($query, compact('filter', 'type'))),
+            GenericDto::class,
+        );
     }
 
     /**
@@ -80,9 +101,29 @@ class AusterClient extends HelaAppClient
      *
      * @return DtoCollection<ServiceDto>
      */
-    public function clientServices(int|string $clientId, array $query = []): DtoCollection
-    {
-        return $this->dtoCollection($this->get('/api/clients/' . $clientId . '/services', $query), ServiceDto::class);
+    public function clientServices(
+        int|string $clientId,
+        array $query = [],
+        string|int|float|null $filter = null,
+        array|string|null $product = null,
+        array|string|null $serviceType = null,
+        array|string|null $status = null,
+        int|string|null $groupId = null,
+        ?string $sort = null,
+        ?string $direction = null,
+    ): DtoCollection {
+        return $this->dtoCollection(
+            $this->get('/api/clients/' . $clientId . '/services', $this->mergeQuery($query, compact(
+                'filter',
+                'product',
+                'serviceType',
+                'status',
+                'groupId',
+                'sort',
+                'direction',
+            ))),
+            ServiceDto::class,
+        );
     }
 
     public function portabilitiesByMsisdn(string $msisdn): GenericDto

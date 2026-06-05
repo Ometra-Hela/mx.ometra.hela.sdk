@@ -105,6 +105,24 @@ class HelaAppClient
     }
 
     /**
+     * @param array<string, mixed> $query
+     * @param array<string, mixed> $named
+     * @return array<string, mixed>
+     */
+    protected function mergeQuery(array $query, array $named): array
+    {
+        foreach ($named as $key => $value) {
+            if ($value === null) {
+                continue;
+            }
+
+            $query[$this->queryKey((string) $key)] = $value;
+        }
+
+        return $query;
+    }
+
+    /**
      * @param array<string, mixed> $data
      */
     public function post(string $uri, array $data = []): Response
@@ -359,6 +377,11 @@ class HelaAppClient
     private function uri(string $uri): string
     {
         return '/' . ltrim($uri, '/');
+    }
+
+    private function queryKey(string $key): string
+    {
+        return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $key));
     }
 
     private function timeout(): int

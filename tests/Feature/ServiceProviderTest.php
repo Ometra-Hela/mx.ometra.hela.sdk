@@ -110,6 +110,45 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('100.50', $offer->public_price);
     }
 
+    public function test_offer_dto_exposes_auster_offer_flags_and_commissions(): void
+    {
+        $offer = OfferDto::from([
+            'offer_id' => 'HLA-20',
+            'public_name' => 'Plan 20',
+            'allows_new_line_activation' => 1,
+            'commission_enabled' => 'true',
+            'commission_activation_amount' => '35.50',
+            'commission_renewal_amount' => 20,
+            'commission_portability_rate' => '0.15',
+            'commission_retention_rate' => '0.05',
+            'commission_retention_months' => '6',
+            'commission_retention_enabled' => 0,
+            'commission_notes' => 'Pago mensual',
+            'supplementaries' => [
+                ['offer_id' => 'SUP-1', 'public_name' => 'Extra data'],
+            ],
+            'replacements' => [
+                ['offer_id' => 'REP-1', 'public_name' => 'Replacement'],
+            ],
+        ]);
+
+        $serialized = $offer->toArray();
+
+        $this->assertTrue($offer->allowsNewLineActivation);
+        $this->assertTrue($offer->commissionEnabled);
+        $this->assertSame(35.5, $offer->commissionActivationAmount);
+        $this->assertSame(20.0, $offer->commissionRenewalAmount);
+        $this->assertSame(0.15, $offer->commissionPortabilityRate);
+        $this->assertSame(0.05, $offer->commissionRetentionRate);
+        $this->assertSame(6, $offer->commissionRetentionMonths);
+        $this->assertFalse($offer->commissionRetentionEnabled);
+        $this->assertSame('Pago mensual', $offer->commissionNotes);
+        $this->assertSame('SUP-1', $offer->supplementaries[0]['offer_id']);
+        $this->assertSame('REP-1', $offer->replacements[0]['offer_id']);
+        $this->assertTrue($serialized['allowsNewLineActivation']);
+        $this->assertSame('Extra data', $serialized['supplementaries'][0]['publicName']);
+    }
+
     public function test_order_dto_serializes_nested_collections(): void
     {
         $order = OrderDto::from([
@@ -179,6 +218,67 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('briefcase', $service->groupIcon);
         $this->assertSame(7, $service->id_serviceGroup);
         $this->assertSame('Operaciones', $service->group_name);
+    }
+
+    public function test_service_dto_exposes_auster_service_display_linking_and_consumption_fields(): void
+    {
+        $service = ServiceDto::from([
+            'id_service' => 10,
+            'id_client' => 'CLI-1',
+            'client_name' => 'Acme',
+            'name' => 'Linea comercial',
+            'msisdn' => '525512345678',
+            'service_type' => 'Prepago',
+            'service_type_code' => 'PRE',
+            'status' => 'ACTIVE',
+            'status_label' => 'Activo',
+            'status_variant' => 'success',
+            'altan_status' => 'ACTIVE',
+            'is_linked' => true,
+            'requires_linking' => false,
+            'linking' => [
+                'status' => 'linked',
+                'attempts' => 1,
+            ],
+            'offer_name' => 'Plan 20',
+            'product' => 'MBB',
+            'registration_date' => '01-06-2026',
+            'last_topup_date' => '2026-06-01',
+            'last_topup_expiry' => '2026-06-30',
+            'expiry_date' => '30-06-2026',
+            'dt_expiry' => '2026-06-30',
+            'expiry_days' => '25',
+            'is_near_expiry' => 1,
+            'consumption_summary' => [
+                'items' => [
+                    ['offering_id' => 'DATA-1', 'offer_name' => 'Bolsa datos'],
+                ],
+            ],
+        ]);
+
+        $serialized = $service->toArray();
+
+        $this->assertSame('Acme', $service->clientName);
+        $this->assertSame('Linea comercial', $service->name);
+        $this->assertSame('Prepago', $service->serviceType);
+        $this->assertSame('PRE', $service->serviceTypeCode);
+        $this->assertSame('Activo', $service->statusLabel);
+        $this->assertSame('success', $service->statusVariant);
+        $this->assertTrue($service->isLinked);
+        $this->assertFalse($service->requiresLinking);
+        $this->assertSame('linked', $service->linking['status']);
+        $this->assertSame('Plan 20', $service->offerName);
+        $this->assertSame('MBB', $service->product);
+        $this->assertSame('01-06-2026', $service->registrationDate);
+        $this->assertSame('2026-06-01', $service->lastTopupDate);
+        $this->assertSame('2026-06-30', $service->lastTopupExpiry);
+        $this->assertSame('30-06-2026', $service->expiryDate);
+        $this->assertSame('2026-06-30', $service->dtExpiry);
+        $this->assertSame(25, $service->expiryDays);
+        $this->assertTrue($service->isNearExpiry);
+        $this->assertSame('Bolsa datos', $service->consumptionSummary['items'][0]['offerName']);
+        $this->assertSame('Bolsa datos', $serialized['consumptionSummary']['items'][0]['offerName']);
+        $this->assertArrayNotHasKey('status_label', $serialized);
     }
 
     public function test_auster_client_exposes_known_api_routes(): void
@@ -402,7 +502,7 @@ class ServiceProviderTest extends TestCase
             'paginate' => true,
             'page' => 2,
             'per_page' => 15,
-            'search' => '5551234567',
+            'filter' => '5551234567',
         ]);
 
         $this->assertInstanceOf(DtoCollection::class, $orders);
@@ -421,8 +521,164 @@ class ServiceProviderTest extends TestCase
                 && (string) ($query['paginate'] ?? '') === '1'
                 && (string) ($query['page'] ?? '') === '2'
                 && (string) ($query['per_page'] ?? '') === '15'
-                && ($query['search'] ?? null) === '5551234567';
+                && ($query['filter'] ?? null) === '5551234567'
+                && ! array_key_exists('search', $query);
         });
+    }
+
+    public function test_auster_client_list_methods_accept_named_query_parameters(): void
+    {
+        Http::fake([
+            'https://auster.example.test/api/catalogs/offers*' => Http::response(['data' => []]),
+            'https://auster.example.test/api/clients*' => Http::response(['data' => []]),
+        ]);
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+
+        $client = HelaSdkFacade::auster();
+        $client->offers(filter: 'Plan', status: 1, product: 'MBB', serviceType: ['PRE'], allowsNewLineActivation: false);
+        $client->clients(['filter' => 'old', 'passthrough' => 'yes'], filter: 'Acme', type: 'corporate');
+        $client->clientServices('CLI-1', filter: '5255', product: 'MBB', serviceType: 'PRE', status: 'ACTIVE', groupId: 7, sort: 'name', direction: 'desc');
+
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/api/catalogs/offers'
+                && ($query['filter'] ?? null) === 'Plan'
+                && ($query['status'] ?? null) === '1'
+                && ($query['product'] ?? null) === 'MBB'
+                && ($query['service_type'][0] ?? null) === 'PRE'
+                && (string) ($query['allows_new_line_activation'] ?? '') === '0';
+        });
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/api/clients'
+                && ($query['filter'] ?? null) === 'Acme'
+                && ($query['passthrough'] ?? null) === 'yes'
+                && ($query['type'] ?? null) === 'corporate';
+        });
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/api/clients/CLI-1/services'
+                && ($query['filter'] ?? null) === '5255'
+                && ($query['product'] ?? null) === 'MBB'
+                && ($query['service_type'] ?? null) === 'PRE'
+                && ($query['status'] ?? null) === 'ACTIVE'
+                && ($query['group_id'] ?? null) === '7'
+                && ($query['sort'] ?? null) === 'name'
+                && ($query['direction'] ?? null) === 'desc';
+        });
+        Http::assertSentCount(3);
+    }
+
+    public function test_auster_clients_api_list_methods_accept_named_query_parameters(): void
+    {
+        Http::fake(function ($request) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+
+            return match ($path) {
+                '/clients-api/catalogs/offers' => Http::response(['data' => [['offer_id' => 'OFFER-1']]]),
+                '/clients-api/orders' => Http::response(['data' => [['id_order' => 501]]]),
+                '/clients-api/services' => Http::response(['data' => [['id_service' => 10]]]),
+                '/clients-api/service-groups' => Http::response(['data' => [['id_serviceGroup' => 3]]]),
+                '/clients-api/users' => Http::response(['data' => [['uri_clientUser' => 'USR-1']]]),
+                default => Http::response(['data' => [['id' => 1]]]),
+            };
+        });
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+
+        $client = HelaSdkFacade::auster()->clientsApiAsClient('client-token');
+        $client->simCards(filter: 'ICCID', product: 'MBB', type: 'physical', status: 1, paginate: false, page: 2, perPage: 15);
+        $client->invoices(['filter' => 'old'], filter: 'Factura', year: 2026, month: 6, paginate: true, page: 1, perPage: 20);
+        $client->catalogOffers(filter: 'Plan', status: '1', product: 'MBB', serviceType: 'PRE', allowsNewLineActivation: true);
+        $client->cfdi(filter: 'UUID', year: '2026', month: '06', paginate: true, page: 3, perPage: 25);
+        $client->orders(filter: '5551234567', type: 'TOPUP', dateFrom: '2026-06-01', dateTo: '2026-06-30', paginate: true, page: 2, perPage: 15);
+        $client->services(filter: '5255', product: ['MBB'], serviceType: ['PRE'], status: ['ACTIVE'], imei: '35988', groupId: 7, onlyActive: false, paginate: true, page: 4, perPage: 50, sort: 'expiry_date', direction: 'desc');
+        $client->serviceGroups(filter: 'Operaciones', paginate: true, page: 1, perPage: 10);
+        $client->users(filter: 'admin@example.test', paginate: true, page: 1, perPage: 10);
+
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/sim-cards'
+                && ($query['filter'] ?? null) === 'ICCID'
+                && ($query['product'] ?? null) === 'MBB'
+                && ($query['type'] ?? null) === 'physical'
+                && ($query['status'] ?? null) === '1'
+                && (string) ($query['paginate'] ?? '') === '0'
+                && ($query['page'] ?? null) === '2'
+                && ($query['per_page'] ?? null) === '15';
+        });
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/accounting/invoices'
+                && ($query['filter'] ?? null) === 'Factura'
+                && ($query['year'] ?? null) === '2026'
+                && ($query['month'] ?? null) === '6'
+                && ($query['per_page'] ?? null) === '20';
+        });
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/catalogs/offers'
+                && ($query['filter'] ?? null) === 'Plan'
+                && ($query['service_type'] ?? null) === 'PRE'
+                && (string) ($query['allows_new_line_activation'] ?? '') === '1'
+                && ! array_key_exists('search', $query);
+        });
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/cfdi'
+                && ($query['filter'] ?? null) === 'UUID'
+                && ($query['year'] ?? null) === '2026'
+                && ($query['month'] ?? null) === '06'
+                && ($query['page'] ?? null) === '3'
+                && ($query['per_page'] ?? null) === '25';
+        });
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/orders'
+                && ($query['filter'] ?? null) === '5551234567'
+                && ($query['type'] ?? null) === 'TOPUP'
+                && ($query['date_from'] ?? null) === '2026-06-01'
+                && ($query['date_to'] ?? null) === '2026-06-30'
+                && ($query['per_page'] ?? null) === '15';
+        });
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/services'
+                && ($query['filter'] ?? null) === '5255'
+                && ($query['product'][0] ?? null) === 'MBB'
+                && ($query['service_type'][0] ?? null) === 'PRE'
+                && ($query['status'][0] ?? null) === 'ACTIVE'
+                && ($query['imei'] ?? null) === '35988'
+                && ($query['group_id'] ?? null) === '7'
+                && (string) ($query['only_active'] ?? '') === '0'
+                && ($query['sort'] ?? null) === 'expiry_date'
+                && ($query['direction'] ?? null) === 'desc';
+        });
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/service-groups'
+                && ($query['filter'] ?? null) === 'Operaciones'
+                && ($query['per_page'] ?? null) === '10';
+        });
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/users'
+                && ($query['filter'] ?? null) === 'admin@example.test'
+                && ($query['per_page'] ?? null) === '10';
+        });
+        Http::assertSentCount(8);
     }
 
     public function test_auster_clients_api_exposes_instance_user_sync_routes(): void
@@ -514,6 +770,84 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('IMEI locked', $imeiLock->message);
         $this->assertSame('IMEI unlocked', $imeiUnlock->message);
         Http::assertSentCount(7);
+    }
+
+    public function test_auster_clients_api_preserves_current_offer_and_service_contract_fields(): void
+    {
+        Http::fake([
+            'https://auster.example.test/clients-api/catalogs/offers*' => Http::response([
+                'data' => [
+                    [
+                        'offer_id' => 'HLA-20',
+                        'public_name' => 'Plan 20',
+                        'allows_new_line_activation' => true,
+                        'commission_enabled' => true,
+                        'commission_activation_amount' => 35,
+                        'commission_retention_enabled' => false,
+                    ],
+                ],
+            ]),
+            'https://auster.example.test/clients-api/services*' => Http::response([
+                'data' => [
+                    [
+                        'id_service' => 10,
+                        'id_client' => 'CLI-1',
+                        'client_name' => 'Acme',
+                        'name' => 'Linea comercial',
+                        'msisdn' => '525512345678',
+                        'service_type' => 'Prepago',
+                        'service_type_code' => 'PRE',
+                        'status_label' => 'Activo',
+                        'status_variant' => 'success',
+                        'is_linked' => true,
+                        'requires_linking' => false,
+                        'linking' => ['status' => 'linked'],
+                        'offer_name' => 'Plan 20',
+                        'product' => 'MBB',
+                        'dt_expiry' => '2026-06-30',
+                        'expiry_days' => 25,
+                        'consumption_summary' => ['items' => []],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+
+        $client = HelaSdkFacade::auster()->clientsApiAsClient('client-token');
+        $offers = $client->catalogOffers(['filter' => 'Plan 20', 'status' => '1']);
+        $services = $client->services(['filter' => '525512345678', 'paginate' => false]);
+
+        $this->assertInstanceOf(OfferDto::class, $offers->first());
+        $this->assertTrue($offers->first()->allowsNewLineActivation);
+        $this->assertTrue($offers->first()->commissionEnabled);
+        $this->assertSame(35.0, $offers->first()->commissionActivationAmount);
+        $this->assertFalse($offers->first()->commissionRetentionEnabled);
+        $this->assertInstanceOf(ServiceDto::class, $services->first());
+        $this->assertSame('Acme', $services->first()->clientName);
+        $this->assertSame('PRE', $services->first()->serviceTypeCode);
+        $this->assertSame('success', $services->first()->statusVariant);
+        $this->assertTrue($services->first()->isLinked);
+        $this->assertSame('linked', $services->first()->linking['status']);
+        $this->assertSame('2026-06-30', $services->first()->dtExpiry);
+        $this->assertSame(25, $services->first()->expiryDays);
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/catalogs/offers'
+                && ($query['filter'] ?? null) === 'Plan 20'
+                && ($query['status'] ?? null) === '1'
+                && ! array_key_exists('search', $query);
+        });
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/services'
+                && ($query['filter'] ?? null) === '525512345678'
+                && in_array((string) ($query['paginate'] ?? ''), ['', '0'], true)
+                && ! array_key_exists('search', $query);
+        });
+        Http::assertSentCount(2);
     }
 
     public function test_auster_clients_api_exposes_service_groups_and_bulk_routes(): void

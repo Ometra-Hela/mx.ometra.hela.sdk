@@ -25,6 +25,15 @@ final class OfferDto extends DataTransferObject
         public readonly int|string|null $sms = null,
         public readonly ?float $altanPrice = null,
         public readonly int|string|bool|null $status = null,
+        public readonly ?bool $allowsNewLineActivation = null,
+        public readonly ?bool $commissionEnabled = null,
+        public readonly ?float $commissionActivationAmount = null,
+        public readonly ?float $commissionRenewalAmount = null,
+        public readonly ?float $commissionPortabilityRate = null,
+        public readonly ?float $commissionRetentionRate = null,
+        public readonly ?int $commissionRetentionMonths = null,
+        public readonly ?bool $commissionRetentionEnabled = null,
+        public readonly ?string $commissionNotes = null,
     ) {
         parent::__construct($attributes);
     }
@@ -51,6 +60,15 @@ final class OfferDto extends DataTransferObject
             sms: self::firstValue($data, ['sms']),
             altanPrice: self::nullableFloat(self::firstValue($data, ['altanPrice', 'altan_price'])),
             status: self::firstValue($data, ['status']),
+            allowsNewLineActivation: self::nullableBool(self::firstValue($data, ['allowsNewLineActivation', 'allows_new_line_activation'])),
+            commissionEnabled: self::nullableBool(self::firstValue($data, ['commissionEnabled', 'commission_enabled'])),
+            commissionActivationAmount: self::nullableFloat(self::firstValue($data, ['commissionActivationAmount', 'commission_activation_amount'])),
+            commissionRenewalAmount: self::nullableFloat(self::firstValue($data, ['commissionRenewalAmount', 'commission_renewal_amount'])),
+            commissionPortabilityRate: self::nullableFloat(self::firstValue($data, ['commissionPortabilityRate', 'commission_portability_rate'])),
+            commissionRetentionRate: self::nullableFloat(self::firstValue($data, ['commissionRetentionRate', 'commission_retention_rate'])),
+            commissionRetentionMonths: self::nullableInt(self::firstValue($data, ['commissionRetentionMonths', 'commission_retention_months'])),
+            commissionRetentionEnabled: self::nullableBool(self::firstValue($data, ['commissionRetentionEnabled', 'commission_retention_enabled'])),
+            commissionNotes: self::nullableString(self::firstValue($data, ['commissionNotes', 'commission_notes'])),
         );
     }
 
@@ -63,5 +81,37 @@ final class OfferDto extends DataTransferObject
         $number = (float) $value;
 
         return floor($number) === $number ? (int) $number : $number;
+    }
+
+    private static function nullableInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    private static function nullableBool(mixed $value): ?bool
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value === 1;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+
+        return match ($normalized) {
+            '1', 'true', 'yes', 'on' => true,
+            '0', 'false', 'no', 'off' => false,
+            default => null,
+        };
     }
 }
