@@ -29,6 +29,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Alize API
+    |--------------------------------------------------------------------------
+    |
+    | Alize owns portability operations and Numlex/Altan transaction detail.
+    | The base URL should point to the Alize application host, without /api.
+    |
+    */
+    'alize' => [
+        'base_url' => env('HELA_ALIZE_URL'),
+        'token' => env('HELA_ALIZE_TOKEN'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | HTTP options
     |--------------------------------------------------------------------------
     */

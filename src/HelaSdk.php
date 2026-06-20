@@ -4,11 +4,13 @@ namespace Ometra\HelaSdk;
 
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Ometra\HelaSdk\Clients\AlizeClient;
 use Ometra\HelaSdk\Clients\AusterClient;
 
 class HelaSdk
 {
     private ?AusterClient $auster = null;
+    private ?AlizeClient $alize = null;
 
     /**
      * @param array<string, mixed> $config
@@ -42,6 +44,17 @@ class HelaSdk
         }
 
         return $this->auster = new AusterClient('auster', $config, $this->config);
+    }
+
+    public function alize(): AlizeClient
+    {
+        if ($this->alize instanceof AlizeClient) {
+            return $this->alize;
+        }
+
+        $config = is_array($this->config['alize'] ?? null) ? $this->config['alize'] : [];
+
+        return $this->alize = new AlizeClient('alize', $config, $this->config);
     }
 
     public function baseUrl(): string
