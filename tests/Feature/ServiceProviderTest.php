@@ -11,6 +11,7 @@ use Ometra\HelaSdk\Dtos\DtoCollection;
 use Ometra\HelaSdk\Dtos\GenericDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
+use Ometra\HelaSdk\Dtos\OrderItemDto;
 use Ometra\HelaSdk\Dtos\ServiceBulkOperationDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
 use Ometra\HelaSdk\Dtos\ServiceGroupDto;
@@ -377,8 +378,51 @@ class ServiceProviderTest extends TestCase
                     'status' => 'ACTIVE',
                 ],
             ]),
+            'https://auster.example.test/api/zephyr-runner/instances' => Http::response([
+                'data' => [['id_instance' => 1, 'id_client' => 'CLI-1', 'desired_status' => 'active']],
+            ]),
+            'https://auster.example.test/api/zephyr-runner/instances/status' => Http::response([
+                'message' => 'Instance status updated.',
+                'data' => ['updated' => 1],
+            ]),
             'https://auster.example.test/api/orders/100/process' => Http::response([
                 'message' => 'Orden procesada',
+            ]),
+            'https://auster.example.test/api/orders/100/unpublish' => Http::response([
+                'data' => ['id_order' => 100, 'published' => false],
+            ]),
+            'https://auster.example.test/api/orders/100/set-discount-code' => Http::response([
+                'message' => 'Discount code applied.',
+            ]),
+            'https://auster.example.test/api/orders/100/items' => Http::response([
+                'data' => ['item' => ['id_orderItem' => 'ITM-1', 'item_type' => 'sim', 'description' => 'SIM']],
+            ], 201),
+            'https://auster.example.test/api/orders/100/items/bulk-create' => Http::response([
+                'data' => ['created' => 2],
+            ], 201),
+            'https://auster.example.test/api/orders/100/items/bulk-assign-targets' => Http::response([
+                'data' => ['assigned' => 2],
+            ]),
+            'https://auster.example.test/api/orders/100/items/ITM-1' => Http::response([
+                'data' => ['item' => ['id_orderItem' => 'ITM-1', 'target' => '525512345678']],
+            ]),
+            'https://auster.example.test/api/services/gift-cards/validate' => Http::response([
+                'data' => ['valid' => true, 'amount' => 100],
+            ]),
+            'https://auster.example.test/api/services/gift-cards/redeem' => Http::response([
+                'data' => ['redeemed' => true],
+            ]),
+            'https://auster.example.test/api/clients/verification' => Http::response([
+                'data' => ['verified' => true],
+            ]),
+            'https://auster.example.test/api/clients/generate-code' => Http::response([
+                'message' => 'Verification code generated.',
+            ]),
+            'https://auster.example.test/api/clients/confirm-code' => Http::response([
+                'message' => 'Verification code confirmed.',
+            ]),
+            'https://auster.example.test/api/clients/generate-ticket' => Http::response([
+                'message' => 'Verification ticket generated.',
             ]),
             'https://auster.example.test/api/clients?filter=Acme' => Http::response([
                 'data' => [
@@ -404,12 +448,52 @@ class ServiceProviderTest extends TestCase
                 'message' => 'IMEI locked by support.',
                 'data' => ['imei' => '359881234567890'],
             ]),
+            'https://auster.example.test/api/discounts/validate/PROMO' => Http::response([
+                'data' => ['valid' => true, 'code' => 'PROMO'],
+            ]),
+            'https://auster.example.test/api/tools/imei/359881234567890/compatibility' => Http::response([
+                'message' => 'Compatibilidad obtenida correctamente',
+                'data' => ['compatibility' => true],
+            ]),
+            'https://auster.example.test/api/vinculacion/persona-fisica/validate' => Http::response([
+                'message' => 'Persona fisica validada.',
+            ]),
+            'https://auster.example.test/api/vinculacion/persona-fisica/desvincula' => Http::response([
+                'message' => 'Persona fisica desvinculada.',
+            ]),
+            'https://auster.example.test/api/vinculacion/persona-fisica/test' => Http::response([
+                'message' => 'Persona fisica test ok.',
+            ]),
+            'https://auster.example.test/api/vinculacion/persona-moral/validate' => Http::response([
+                'message' => 'Persona moral validada.',
+            ]),
+            'https://auster.example.test/api/vinculacion/persona-moral/register' => Http::response([
+                'message' => 'Persona moral registrada.',
+            ]),
+            'https://auster.example.test/api/vinculacion/persona-moral/vincula' => Http::response([
+                'message' => 'Persona moral vinculada.',
+            ]),
         ]);
 
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
 
         $service = HelaSdkFacade::auster()->serviceByMsisdn('525512345678');
+        $instances = HelaSdkFacade::auster()->zephyrRunnerInstances();
+        $instanceStatus = HelaSdkFacade::auster()->updateZephyrRunnerInstanceStatus(['id_client' => 'CLI-1']);
         $process = HelaSdkFacade::auster()->processOrder(100);
+        $unpublish = HelaSdkFacade::auster()->unpublishOrder(100);
+        $discount = HelaSdkFacade::auster()->setOrderDiscountCode(100, ['code' => 'PROMO']);
+        $item = HelaSdkFacade::auster()->addOrderItem(100, ['type' => 'sim']);
+        $bulkCreate = HelaSdkFacade::auster()->bulkCreateOrderItems(100, ['items' => []]);
+        $bulkAssign = HelaSdkFacade::auster()->bulkAssignOrderItemTargets(100, ['targets' => []]);
+        $updatedItem = HelaSdkFacade::auster()->updateOrderItem(100, 'ITM-1', ['target' => '525512345678']);
+        $removedItem = HelaSdkFacade::auster()->removeOrderItem(100, 'ITM-1');
+        $validGiftCard = HelaSdkFacade::auster()->validateGiftCard(['code' => 'GIFT-1']);
+        $redeemedGiftCard = HelaSdkFacade::auster()->redeemGiftCard(['code' => 'GIFT-1']);
+        $verification = HelaSdkFacade::auster()->clientVerification();
+        $generatedCode = HelaSdkFacade::auster()->generateClientVerificationCode(['email' => 'ops@example.test']);
+        $confirmedCode = HelaSdkFacade::auster()->confirmClientVerificationCode(['code' => '123456']);
+        $generatedTicket = HelaSdkFacade::auster()->generateClientVerificationTicket(['email' => 'ops@example.test']);
         $clients = HelaSdkFacade::auster()->clients(['filter' => 'Acme']);
         $services = HelaSdkFacade::auster()->clientServices('CLI-1', ['status' => 'ACTIVE']);
         $execute = HelaSdkFacade::auster()->executeAlizePortability(10, ['idempotency_key' => 'key']);
@@ -420,11 +504,36 @@ class ServiceProviderTest extends TestCase
         $lockImei = HelaSdkFacade::auster()->supportLockImei('359881234567890', [
             'incident_folio' => 'STR-20260523-0001',
         ]);
+        $discountCode = HelaSdkFacade::auster()->validateDiscountCode('PROMO');
+        $imeiCompatibility = HelaSdkFacade::auster()->imeiCompatibility('359881234567890');
+        $personaFisica = HelaSdkFacade::auster()->validatePersonaFisica(['msisdn' => '525512345678']);
+        $desvinculaPersonaFisica = HelaSdkFacade::auster()->desvinculaPersonaFisica(['msisdn' => '525512345678']);
+        $testPersonaFisica = HelaSdkFacade::auster()->testPersonaFisica(['msisdn' => '525512345678']);
+        $personaMoral = HelaSdkFacade::auster()->validatePersonaMoral(['rfc' => 'XAXX010101000']);
+        $registerPersonaMoral = HelaSdkFacade::auster()->registerPersonaMoral(['rfc' => 'XAXX010101000']);
+        $vinculaPersonaMoral = HelaSdkFacade::auster()->vinculaPersonaMoral(['rfc' => 'XAXX010101000']);
 
         $this->assertInstanceOf(ServiceDto::class, $service);
         $this->assertSame('525512345678', $service->msisdn);
+        $this->assertSame('CLI-1', $instances->first()->id_client);
+        $this->assertSame('Instance status updated.', $instanceStatus->message);
         $this->assertInstanceOf(ApiResponseDto::class, $process);
         $this->assertSame('Orden procesada', $process->message);
+        $this->assertInstanceOf(OrderDto::class, $unpublish);
+        $this->assertFalse($unpublish->published);
+        $this->assertSame('Discount code applied.', $discount->message);
+        $this->assertInstanceOf(OrderItemDto::class, $item);
+        $this->assertSame('ITM-1', $item->id);
+        $this->assertSame(2, $bulkCreate->created);
+        $this->assertSame(2, $bulkAssign->assigned);
+        $this->assertSame('525512345678', $updatedItem->target);
+        $this->assertSame(200, $removedItem->status);
+        $this->assertTrue($validGiftCard->valid);
+        $this->assertTrue($redeemedGiftCard->redeemed);
+        $this->assertTrue($verification->verified);
+        $this->assertSame('Verification code generated.', $generatedCode->message);
+        $this->assertSame('Verification code confirmed.', $confirmedCode->message);
+        $this->assertSame('Verification ticket generated.', $generatedTicket->message);
         $this->assertInstanceOf(DtoCollection::class, $clients);
         $this->assertInstanceOf(GenericDto::class, $clients->first());
         $this->assertSame('CLI-1', $clients->first()->id_client);
@@ -434,7 +543,15 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('Portability completion applied.', $complete->message);
         $this->assertSame('Service suspended for theft.', $suspendStolen->message);
         $this->assertSame('IMEI locked by support.', $lockImei->message);
-        Http::assertSentCount(8);
+        $this->assertTrue($discountCode->valid);
+        $this->assertTrue($imeiCompatibility->compatibility);
+        $this->assertSame('Persona fisica validada.', $personaFisica->message);
+        $this->assertSame('Persona fisica desvinculada.', $desvinculaPersonaFisica->message);
+        $this->assertSame('Persona fisica test ok.', $testPersonaFisica->message);
+        $this->assertSame('Persona moral validada.', $personaMoral->message);
+        $this->assertSame('Persona moral registrada.', $registerPersonaMoral->message);
+        $this->assertSame('Persona moral vinculada.', $vinculaPersonaMoral->message);
+        Http::assertSentCount(31);
     }
 
     public function test_auster_clients_api_without_explicit_token_does_not_send_authorization(): void
@@ -493,6 +610,12 @@ class ServiceProviderTest extends TestCase
                     'uri_clientUser' => 'user-1',
                 ],
             ]),
+            'https://auster.example.test/clients-api/authentication/social-login' => Http::response([
+                'data' => [
+                    'token' => 'social-session-token',
+                    'uri_clientUser' => 'user-2',
+                ],
+            ]),
         ]);
 
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
@@ -501,15 +624,27 @@ class ServiceProviderTest extends TestCase
             'email' => 'client@example.test',
             'password' => 'secret',
         ]);
+        $socialLogin = HelaSdkFacade::auster()->clientsApi()->socialLogin([
+            'provider' => 'google',
+            'token' => 'social-token',
+        ]);
 
         $this->assertInstanceOf(AuthTokenDto::class, $login);
         $this->assertSame('session-token', $login->token);
         $this->assertSame('user-1', $login->clientUserUri);
+        $this->assertInstanceOf(AuthTokenDto::class, $socialLogin);
+        $this->assertSame('social-session-token', $socialLogin->token);
+        $this->assertSame('user-2', $socialLogin->clientUserUri);
 
         Http::assertSent(function ($request) {
             return $request->url() === 'https://auster.example.test/clients-api/authentication/login'
                 && ! $request->hasHeader('Authorization');
         });
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://auster.example.test/clients-api/authentication/social-login'
+                && ! $request->hasHeader('Authorization');
+        });
+        Http::assertSentCount(2);
     }
 
     public function test_auster_clients_api_as_client_always_uses_api_prefix(): void
@@ -935,6 +1070,88 @@ class ServiceProviderTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    public function test_auster_clients_api_exposes_account_documents_tax_wallet_and_order_payment_routes(): void
+    {
+        Http::fake(function ($request) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+            $method = $request->method();
+
+            return match ([$method, $path]) {
+                ['POST', '/clients-api/orders/501/payments'] => Http::response([
+                    'message' => 'Payment added',
+                    'data' => ['id_payment' => 9],
+                ], 201),
+                ['GET', '/clients-api/wallet'] => Http::response([
+                    'data' => ['balance' => 150.25, 'currency' => 'MXN'],
+                ]),
+                ['GET', '/clients-api/wallet/transactions'] => Http::response([
+                    'data' => [['id_transaction' => 1, 'amount' => 25]],
+                ]),
+                ['GET', '/clients-api/documents'] => Http::response([
+                    'data' => [['document_key' => 'csf', 'status' => 'pending']],
+                ]),
+                ['POST', '/clients-api/documents/csf'] => Http::response([
+                    'data' => ['document_key' => 'csf', 'status' => 'uploaded'],
+                ], 201),
+                ['GET', '/clients-api/documents/csf/versions'] => Http::response([
+                    'data' => [['id_document' => 12, 'version' => 1]],
+                ]),
+                ['GET', '/clients-api/documents/csf/versions/12/download'] => Http::response('pdf-bytes'),
+                ['GET', '/clients-api/tax-profiles'] => Http::response([
+                    'data' => [['uid' => 'tax-1', 'rfc' => 'XAXX010101000']],
+                ]),
+                ['POST', '/clients-api/tax-profiles'] => Http::response([
+                    'data' => ['uid' => 'tax-2', 'rfc' => 'XEXX010101000'],
+                ], 201),
+                ['GET', '/clients-api/tax-profiles/catalogs'] => Http::response([
+                    'data' => ['regimes' => [['value' => '601']]],
+                ]),
+                ['GET', '/clients-api/tax-profiles/tax-1'] => Http::response([
+                    'data' => ['uid' => 'tax-1', 'rfc' => 'XAXX010101000'],
+                ]),
+                ['PUT', '/clients-api/tax-profiles/tax-1'] => Http::response([
+                    'data' => ['uid' => 'tax-1', 'rfc' => 'XAXX010101000', 'name' => 'Updated'],
+                ]),
+                ['DELETE', '/clients-api/tax-profiles/tax-1'] => Http::response([
+                    'message' => 'Tax profile deleted',
+                ]),
+                default => Http::response(['message' => 'Unexpected request'], 404),
+            };
+        });
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+        $client = HelaSdkFacade::auster()->clientsApiAsClient('client-token');
+
+        $payment = $client->addOrderPayment(501, ['amount' => 99]);
+        $wallet = $client->wallet();
+        $transactions = $client->walletTransactions();
+        $documents = $client->documents();
+        $storedDocument = $client->storeDocument('csf', ['file' => 'contents']);
+        $versions = $client->documentVersions('csf');
+        $download = $client->downloadDocument('csf', 12);
+        $taxProfiles = $client->taxProfiles();
+        $createdTaxProfile = $client->createTaxProfile(['rfc' => 'XEXX010101000']);
+        $taxCatalogs = $client->taxProfileCatalogs();
+        $taxProfile = $client->taxProfile('tax-1');
+        $updatedTaxProfile = $client->updateTaxProfile('tax-1', ['name' => 'Updated']);
+        $deletedTaxProfile = $client->deleteTaxProfile('tax-1');
+
+        $this->assertSame('Payment added', $payment->message);
+        $this->assertSame(150.25, $wallet->balance);
+        $this->assertSame(25, $transactions->first()->amount);
+        $this->assertSame('csf', $documents->first()->document_key);
+        $this->assertSame('uploaded', $storedDocument->status);
+        $this->assertSame(12, $versions->first()->id_document);
+        $this->assertSame('pdf-bytes', $download->body());
+        $this->assertSame('tax-1', $taxProfiles->first()->uid);
+        $this->assertSame('tax-2', $createdTaxProfile->uid);
+        $this->assertSame('601', $taxCatalogs->regimes[0]['value']);
+        $this->assertSame('XAXX010101000', $taxProfile->rfc);
+        $this->assertSame('Updated', $updatedTaxProfile->name);
+        $this->assertSame('Tax profile deleted', $deletedTaxProfile->message);
+        Http::assertSentCount(13);
+    }
+
     public function test_auster_clients_api_exposes_service_groups_and_bulk_routes(): void
     {
         Http::fake(function ($request) {
@@ -985,6 +1202,10 @@ class ServiceProviderTest extends TestCase
                     'ok' => true,
                     'operation' => ['id_serviceBulkOperation' => 77, 'status' => 'queued'],
                 ], 202),
+                ['GET', '/clients-api/services/bulk-operations/latest'] => Http::response([
+                    'ok' => true,
+                    'operation' => ['id_serviceBulkOperation' => 78, 'status' => 'running'],
+                ]),
                 default => Http::response(['message' => 'Unexpected request'], 404),
             };
         });
@@ -1003,6 +1224,7 @@ class ServiceProviderTest extends TestCase
         $stored = $client->storeServiceBulkAction(['action' => 'suspend', 'confirmed' => true, 'selection' => ['mode' => 'ids', 'ids' => [10, 11]]]);
         $operation = $client->serviceBulkOperation(77);
         $retry = $client->retryServiceBulkOperation(77);
+        $latest = $client->latestServiceBulkOperation();
 
         $this->assertInstanceOf(DtoCollection::class, $paymentMethods);
         $this->assertSame('SPEI', $paymentMethods->first()->value);
@@ -1018,7 +1240,8 @@ class ServiceProviderTest extends TestCase
         $this->assertSame(77, $stored->idServiceBulkOperation);
         $this->assertTrue($operation->isTerminal);
         $this->assertSame('queued', $retry->status);
-        Http::assertSentCount(11);
+        $this->assertSame(78, $latest->idServiceBulkOperation);
+        Http::assertSentCount(12);
     }
 
     public function test_failed_responses_throw_structured_exception(): void

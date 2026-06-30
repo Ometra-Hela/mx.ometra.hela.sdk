@@ -7,6 +7,7 @@ use Ometra\HelaSdk\Dtos\DtoCollection;
 use Ometra\HelaSdk\Dtos\GenericDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
+use Ometra\HelaSdk\Dtos\OrderItemDto;
 use Ometra\HelaSdk\Dtos\PaymentDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
 
@@ -94,6 +95,38 @@ class AusterClient extends HelaAppClient
             $this->get('/api/clients', $this->mergeQuery($query, compact('filter', 'type'))),
             GenericDto::class,
         );
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     */
+    public function clientVerification(array $query = []): GenericDto
+    {
+        return $this->dto($this->get('/api/clients/verification', $query), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function generateClientVerificationCode(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/api/clients/generate-code', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function confirmClientVerificationCode(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/api/clients/confirm-code', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function generateClientVerificationTicket(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/api/clients/generate-ticket', $data));
     }
 
     /**
@@ -242,6 +275,11 @@ class AusterClient extends HelaAppClient
         return $this->dto($this->post('/api/orders/' . $orderId . '/publish'), OrderDto::class);
     }
 
+    public function unpublishOrder(int|string $orderId): OrderDto
+    {
+        return $this->dto($this->post('/api/orders/' . $orderId . '/unpublish'), OrderDto::class);
+    }
+
     public function processOrder(int|string $orderId): ApiResponseDto
     {
         return $this->apiResponse($this->post('/api/orders/' . $orderId . '/process'));
@@ -260,6 +298,51 @@ class AusterClient extends HelaAppClient
         return $this->apiResponse($this->post('/api/orders/' . $orderId . '/add-payment', $data));
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function setOrderDiscountCode(int|string $orderId, array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/api/orders/' . $orderId . '/set-discount-code', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function addOrderItem(int|string $orderId, array $data): OrderItemDto
+    {
+        return $this->dto($this->post('/api/orders/' . $orderId . '/items', $data), OrderItemDto::class, 'item');
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function bulkCreateOrderItems(int|string $orderId, array $data): GenericDto
+    {
+        return $this->dto($this->post('/api/orders/' . $orderId . '/items/bulk-create', $data), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function bulkAssignOrderItemTargets(int|string $orderId, array $data): GenericDto
+    {
+        return $this->dto($this->post('/api/orders/' . $orderId . '/items/bulk-assign-targets', $data), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function updateOrderItem(int|string $orderId, int|string $orderItemId, array $data): OrderItemDto
+    {
+        return $this->dto($this->patch('/api/orders/' . $orderId . '/items/' . $orderItemId, $data), OrderItemDto::class, 'item');
+    }
+
+    public function removeOrderItem(int|string $orderId, int|string $orderItemId): ApiResponseDto
+    {
+        return $this->apiResponse($this->delete('/api/orders/' . $orderId . '/items/' . $orderItemId));
+    }
+
     public function validatePayment(int|string $paymentId): ApiResponseDto
     {
         return $this->apiResponse($this->post('/api/payments/' . $paymentId . '/validate'));
@@ -268,6 +351,16 @@ class AusterClient extends HelaAppClient
     public function cancelPayment(int|string $paymentId): ApiResponseDto
     {
         return $this->apiResponse($this->post('/api/payments/' . $paymentId . '/cancel'));
+    }
+
+    public function validateDiscountCode(string $code): GenericDto
+    {
+        return $this->dto($this->get('/api/discounts/validate/' . rawurlencode($code)), GenericDto::class);
+    }
+
+    public function imeiCompatibility(string $imei): GenericDto
+    {
+        return $this->dto($this->get('/api/tools/imei/' . rawurlencode($imei) . '/compatibility'), GenericDto::class);
     }
 
     public function searchMsisdns(array $data): ApiResponseDto
@@ -280,8 +373,88 @@ class AusterClient extends HelaAppClient
         return $this->apiResponse($this->post('/api/vinculacion/msisdn/validate', $data));
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function validateGiftCard(array $data): GenericDto
+    {
+        return $this->dto($this->post('/api/services/gift-cards/validate', $data), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function redeemGiftCard(array $data): GenericDto
+    {
+        return $this->dto($this->post('/api/services/gift-cards/redeem', $data), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function validatePersonaFisica(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->postMultipart('/api/vinculacion/persona-fisica/validate', $data));
+    }
+
     public function vinculaPersonaFisica(array $data): ApiResponseDto
     {
         return $this->apiResponse($this->postMultipart('/api/vinculacion/persona-fisica/vincula', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function desvinculaPersonaFisica(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->postMultipart('/api/vinculacion/persona-fisica/desvincula', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function testPersonaFisica(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->postMultipart('/api/vinculacion/persona-fisica/test', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function validatePersonaMoral(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->postMultipart('/api/vinculacion/persona-moral/validate', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function registerPersonaMoral(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->postMultipart('/api/vinculacion/persona-moral/register', $data));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function vinculaPersonaMoral(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->postMultipart('/api/vinculacion/persona-moral/vincula', $data));
+    }
+
+    /**
+     * @return DtoCollection<GenericDto>
+     */
+    public function zephyrRunnerInstances(): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/api/zephyr-runner/instances'), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function updateZephyrRunnerInstanceStatus(array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/api/zephyr-runner/instances/status', $data));
     }
 }

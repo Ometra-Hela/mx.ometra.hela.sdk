@@ -57,6 +57,14 @@ class AusterClientsApiClient extends HelaAppClient
     /**
      * @param array<string, mixed> $data
      */
+    public function socialLogin(array $data): AuthTokenDto
+    {
+        return $this->dto($this->postWithoutToken('/clients-api/authentication/social-login', $data), AuthTokenDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
     public function requestPasswordReset(array $data): ApiResponseDto
     {
         return $this->apiResponse($this->postWithoutToken('/clients-api/authentication/password/reset', $data));
@@ -325,6 +333,14 @@ class AusterClientsApiClient extends HelaAppClient
     }
 
     /**
+     * @param array<string, mixed> $data
+     */
+    public function addOrderPayment(int|string $orderId, array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/clients-api/orders/' . $orderId . '/payments', $data));
+    }
+
+    /**
      * @param array<string, mixed> $query
      *
      * @return DtoCollection<GenericDto>
@@ -500,6 +516,15 @@ class AusterClientsApiClient extends HelaAppClient
         );
     }
 
+    public function latestServiceBulkOperation(): ServiceBulkOperationDto
+    {
+        return $this->dto(
+            $this->get('/clients-api/services/bulk-operations/latest'),
+            ServiceBulkOperationDto::class,
+            'operation',
+        );
+    }
+
     public function service(string $msisdn): ServiceDto
     {
         return $this->dto($this->get('/clients-api/services/' . $msisdn), ServiceDto::class);
@@ -616,6 +641,101 @@ class AusterClientsApiClient extends HelaAppClient
     public function imeiUnlock(string $imei): ApiResponseDto
     {
         return $this->apiResponse($this->post('/clients-api/imei/' . $imei . '/unlock'));
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     */
+    public function wallet(array $query = []): GenericDto
+    {
+        return $this->dto($this->get('/clients-api/wallet', $query), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     *
+     * @return DtoCollection<GenericDto>
+     */
+    public function walletTransactions(array $query = []): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/clients-api/wallet/transactions', $query), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     *
+     * @return DtoCollection<GenericDto>
+     */
+    public function documents(array $query = []): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/clients-api/documents', $query), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function storeDocument(string $documentKey, array $data): GenericDto
+    {
+        return $this->dto($this->postMultipart('/clients-api/documents/' . rawurlencode($documentKey), $data), GenericDto::class);
+    }
+
+    /**
+     * @return DtoCollection<GenericDto>
+     */
+    public function documentVersions(string $documentKey): DtoCollection
+    {
+        return $this->dtoCollection(
+            $this->get('/clients-api/documents/' . rawurlencode($documentKey) . '/versions'),
+            GenericDto::class,
+        );
+    }
+
+    public function downloadDocument(string $documentKey, int|string $documentId): Response
+    {
+        return $this->get(
+            '/clients-api/documents/' . rawurlencode($documentKey) . '/versions/' . $documentId . '/download',
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     *
+     * @return DtoCollection<GenericDto>
+     */
+    public function taxProfiles(array $query = []): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/clients-api/tax-profiles', $query), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function createTaxProfile(array $data): GenericDto
+    {
+        return $this->dto($this->post('/clients-api/tax-profiles', $data), GenericDto::class);
+    }
+
+    public function taxProfileCatalogs(): GenericDto
+    {
+        return $this->dto($this->get('/clients-api/tax-profiles/catalogs'), GenericDto::class);
+    }
+
+    public function taxProfile(string $uid): GenericDto
+    {
+        return $this->dto($this->get('/clients-api/tax-profiles/' . rawurlencode($uid)), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function updateTaxProfile(string $uid, array $data): GenericDto
+    {
+        return $this->dto($this->put('/clients-api/tax-profiles/' . rawurlencode($uid), $data), GenericDto::class);
+    }
+
+    public function deleteTaxProfile(string $uid): ApiResponseDto
+    {
+        return $this->apiResponse($this->delete('/clients-api/tax-profiles/' . rawurlencode($uid)));
     }
 
     /**
