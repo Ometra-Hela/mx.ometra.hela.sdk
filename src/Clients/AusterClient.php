@@ -32,7 +32,7 @@ class AusterClient extends HelaAppClient
             $config['token_type'] = $tokenType;
         }
 
-        $client = new AusterClientsApiClient('auster.clients-api', $config, $this->config());
+        $client = new AusterClientsApiClient('auster.clients-api', $config, $this->defaults());
 
         if ($token === null && $tokenType === null) {
             $this->clientsApi = $client;
@@ -164,25 +164,53 @@ class AusterClient extends HelaAppClient
         return $this->dto($this->get('/api/catalogs/portability/msisdn/' . $msisdn), GenericDto::class);
     }
 
+    /**
+     * @param array<string, mixed> $query
+     *
+     * @return DtoCollection<GenericDto>
+     */
+    public function portabilities(array $query = []): DtoCollection
+    {
+        return $this->clientsApi()->portabilities($query);
+    }
+
+    public function portability(int|string $portabilityId): GenericDto
+    {
+        return $this->clientsApi()->portability($portabilityId);
+    }
+
+    /**
+     * @return DtoCollection<GenericDto>
+     */
+    public function portabilityTransitories(): DtoCollection
+    {
+        return $this->clientsApi()->portabilityTransitories();
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function validatePortability(array $data): GenericDto
+    {
+        return $this->clientsApi()->validatePortability($data);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function requestPortability(array $data): GenericDto
+    {
+        return $this->clientsApi()->requestPortability($data);
+    }
+
+    public function deletePortability(int|string $portabilityId): ApiResponseDto
+    {
+        return $this->clientsApi()->deletePortability($portabilityId);
+    }
+
     public function serviceByMsisdn(string $msisdn): ServiceDto
     {
         return $this->dto($this->get('/api/services/msisdn/' . $msisdn), ServiceDto::class);
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     */
-    public function executeAlizePortability(int|string $portabilityId, array $data): ApiResponseDto
-    {
-        return $this->apiResponse($this->post('/api/alize/portabilities/' . $portabilityId . '/execute', $data));
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     */
-    public function completeAlizePortability(int|string $portabilityId, array $data): ApiResponseDto
-    {
-        return $this->apiResponse($this->post('/api/alize/portabilities/' . $portabilityId . '/complete', $data));
     }
 
     /**

@@ -38,6 +38,14 @@ class HelaAppClient
         return $this->config;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    protected function defaults(): array
+    {
+        return $this->defaults;
+    }
+
     public function baseUrl(): string
     {
         $baseUrl = $this->config['base_url'] ?? null;

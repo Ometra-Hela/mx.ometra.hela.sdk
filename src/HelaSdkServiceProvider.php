@@ -3,7 +3,6 @@
 namespace Ometra\HelaSdk;
 
 use Illuminate\Support\ServiceProvider;
-use Ometra\HelaSdk\Clients\AlizeClient;
 use Ometra\HelaSdk\Clients\AusterClient;
 
 class HelaSdkServiceProvider extends ServiceProvider
@@ -19,7 +18,6 @@ class HelaSdkServiceProvider extends ServiceProvider
         $this->app->alias(HelaSdk::class, 'hela-sdk');
 
         $this->app->singleton(AusterClient::class, fn ($app): AusterClient => $app->make(HelaSdk::class)->auster());
-        $this->app->singleton(AlizeClient::class, fn ($app): AlizeClient => $app->make(HelaSdk::class)->alize());
     }
 
     public function boot(): void

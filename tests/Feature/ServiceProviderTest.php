@@ -3,7 +3,6 @@
 namespace Ometra\HelaSdk\Tests\Feature;
 
 use Illuminate\Support\Facades\Http;
-use Ometra\HelaSdk\Clients\AlizeClient;
 use Ometra\HelaSdk\Clients\AusterClient;
 use Ometra\HelaSdk\Dtos\ApiResponseDto;
 use Ometra\HelaSdk\Dtos\AuthTokenDto;
@@ -36,63 +35,43 @@ class ServiceProviderTest extends TestCase
         $this->assertSame(1000, config('hela-sdk.slow_log_ms'));
     }
 
-    public function test_it_registers_the_alize_client(): void
-    {
-        $this->app['config']->set('hela-sdk.alize.base_url', 'https://alize.example.test/');
-        $this->app['config']->set('hela-sdk.alize.token', 'alize-secret');
-
-        $this->assertInstanceOf(AlizeClient::class, HelaSdkFacade::alize());
-        $this->assertSame('https://alize.example.test', HelaSdkFacade::alize()->baseUrl());
-        $this->assertSame('alize-secret', HelaSdkFacade::alize()->token());
-    }
-
-    public function test_alize_client_exposes_portability_routes(): void
+    public function test_auster_client_exposes_portability_routes(): void
     {
         Http::fake(function ($request) {
             $path = parse_url($request->url(), PHP_URL_PATH);
             $method = $request->method();
 
             return match ([$method, $path]) {
-                ['GET', '/api/portabilities'] => Http::response([
+                ['GET', '/clients-api/portability'] => Http::response([
                     'data' => [['id' => 10, 'state' => 'PORT_SCHEDULED']],
                 ]),
-                ['GET', '/api/portabilities/10'] => Http::response([
+                ['GET', '/clients-api/portability/10'] => Http::response([
                     'data' => ['id' => 10, 'state' => 'PORT_SCHEDULED'],
                 ]),
-                ['GET', '/api/portabilities/msisdn/525512345678'] => Http::response([
-                    'data' => ['id' => 10, 'state' => 'PORT_SCHEDULED'],
-                ]),
-                ['GET', '/api/portabilities/transitories'] => Http::response([
+                ['GET', '/clients-api/portability/transitories'] => Http::response([
                     'data' => [['msisdn' => '525500000001']],
                 ]),
-                ['POST', '/api/portabilities/validate'] => Http::response([
+                ['POST', '/clients-api/portability/validate'] => Http::response([
                     'valid' => true,
                     'data' => ['external_client_id' => 'CLI-1'],
                 ]),
-                ['POST', '/api/portabilities'] => Http::response([
+                ['POST', '/clients-api/portability/request'] => Http::response([
                     'data' => ['id' => 10, 'state' => 'REQUESTED'],
                 ], 201),
-                ['DELETE', '/api/portabilities/10'] => Http::response([
+                ['DELETE', '/clients-api/portability/10'] => Http::response([
                     'message' => 'Portability deleted',
-                ]),
-                ['POST', '/api/alize/portabilities/10/execute'] => Http::response([
-                    'message' => 'Portability execute accepted.',
-                ]),
-                ['POST', '/api/alize/portabilities/10/complete'] => Http::response([
-                    'message' => 'Portability completion applied.',
                 ]),
                 default => Http::response(['message' => 'Unexpected request'], 404),
             };
         });
 
         $this->app['config']->set('hela-sdk.source', 'auster');
-        $this->app['config']->set('hela-sdk.alize.base_url', 'https://alize.example.test');
-        $this->app['config']->set('hela-sdk.alize.token', 'alize-secret');
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+        $this->app['config']->set('hela-sdk.auster.clients_api.token', 'client-token');
 
-        $client = HelaSdkFacade::alize();
+        $client = HelaSdkFacade::auster();
         $portabilities = $client->portabilities(['status' => 'pending']);
         $portability = $client->portability(10);
-        $byMsisdn = $client->portabilitiesByMsisdn('525512345678');
         $transitories = $client->portabilityTransitories();
         $created = $client->requestPortability([
             'numbers' => [[
@@ -109,29 +88,24 @@ class ServiceProviderTest extends TestCase
             ]],
         ]);
         $deleted = $client->deletePortability(10);
-        $execute = $client->executeAusterPortability(10, ['idempotency_key' => 'key']);
-        $complete = $client->completeAusterPortability(10, ['idempotency_key' => 'key']);
 
         $this->assertInstanceOf(DtoCollection::class, $portabilities);
         $this->assertSame('PORT_SCHEDULED', $portabilities->first()->state);
         $this->assertSame(10, $portability->id);
-        $this->assertSame(10, $byMsisdn->id);
         $this->assertSame('525500000001', $transitories->first()->msisdn);
         $this->assertSame('REQUESTED', $created->state);
         $this->assertSame('CLI-1', $validated->external_client_id);
         $this->assertSame('Portability deleted', $deleted->message);
-        $this->assertSame('Portability execute accepted.', $execute->message);
-        $this->assertSame('Portability completion applied.', $complete->message);
 
         Http::assertSent(function ($request): bool {
             parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
 
-            return parse_url($request->url(), PHP_URL_PATH) === '/api/portabilities'
+            return parse_url($request->url(), PHP_URL_PATH) === '/clients-api/portability'
                 && ($query['status'] ?? null) === 'pending'
-                && $request->hasHeader('Authorization', 'Bearer alize-secret')
+                && $request->hasHeader('Authorization', 'Bearer API-client-token')
                 && $request->hasHeader('X-Hela-App', 'auster');
         });
-        Http::assertSentCount(9);
+        Http::assertSentCount(6);
     }
 
     public function test_facade_resolves_the_sdk(): void
@@ -448,12 +422,6 @@ class ServiceProviderTest extends TestCase
                     ['id_service' => 20, 'id_client' => 'CLI-1', 'msisdn' => '525500000001', 'status' => 'ACTIVE'],
                 ],
             ]),
-            'https://auster.example.test/api/alize/portabilities/10/execute' => Http::response([
-                'message' => 'Portability execute accepted.',
-            ]),
-            'https://auster.example.test/api/alize/portabilities/10/complete' => Http::response([
-                'message' => 'Portability completion applied.',
-            ]),
             'https://auster.example.test/api/support/services/525512345678/suspend-stolen' => Http::response([
                 'message' => 'Service suspended for theft.',
                 'data' => ['reason' => 'stolen'],
@@ -510,8 +478,6 @@ class ServiceProviderTest extends TestCase
         $generatedTicket = HelaSdkFacade::auster()->generateClientVerificationTicket(['email' => 'ops@example.test']);
         $clients = HelaSdkFacade::auster()->clients(['filter' => 'Acme']);
         $services = HelaSdkFacade::auster()->clientServices('CLI-1', ['status' => 'ACTIVE']);
-        $execute = HelaSdkFacade::auster()->executeAlizePortability(10, ['idempotency_key' => 'key']);
-        $complete = HelaSdkFacade::auster()->completeAlizePortability(10, ['idempotency_key' => 'key']);
         $suspendStolen = HelaSdkFacade::auster()->supportSuspendServiceForTheft('525512345678', [
             'incident_folio' => 'STR-20260523-0001',
         ]);
@@ -553,8 +519,6 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('CLI-1', $clients->first()->id_client);
         $this->assertInstanceOf(DtoCollection::class, $services);
         $this->assertSame('525500000001', $services->first()->msisdn);
-        $this->assertSame('Portability execute accepted.', $execute->message);
-        $this->assertSame('Portability completion applied.', $complete->message);
         $this->assertSame('Service suspended for theft.', $suspendStolen->message);
         $this->assertSame('IMEI locked by support.', $lockImei->message);
         $this->assertTrue($discountCode->valid);
@@ -565,7 +529,7 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('Persona moral validada.', $personaMoral->message);
         $this->assertSame('Persona moral registrada.', $registerPersonaMoral->message);
         $this->assertSame('Persona moral vinculada.', $vinculaPersonaMoral->message);
-        Http::assertSentCount(31);
+        Http::assertSentCount(29);
     }
 
     public function test_auster_clients_api_without_explicit_token_does_not_send_authorization(): void
