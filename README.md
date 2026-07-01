@@ -123,7 +123,10 @@ Atajos disponibles para `clients-api`:
 - `catalogOffers($query)`
 - `cfdi($query)`, `cfdiOrders()`, `requestCfdi($data)` y `downloadCfdi($uid, $format)`
 - `orders($query)`, `order($id)` y `createOrder($data)`
-- `portabilities($query)`, `portability($id)`, `portabilityTransitories()`, `requestPortability($data)` y `deletePortability($id)`
+- `portabilities($query)`, `portability($id)`, `portabilityTransitories()`, `validatePortability($data)`, `requestPortability($data)` y `deletePortability($id)`.
+  Portabilidad usa exclusivamente `snake_case`; por ejemplo `external_client_id`,
+  `external_reference` y `numbers[].msisdn_ported`, `numbers[].msisdn_transitory`,
+  `numbers[].nip`.
 - `services($query)`, `service($msisdn)`, `serviceProfile($msisdn)`, `serviceBags($msisdn)`, `replacementOptions($msisdn)`, `activateOptions($msisdn)`, `topupOptions($msisdn)`, `renewOptions($msisdn)`, `activateService($msisdn, $data)`, `topupService($msisdn, $data)`, `renewService($msisdn, $data)`, `replaceOffer($msisdn, $data)`, `replaceSimCard($msisdn, $data)`, `updateServiceName($msisdn, $data)`, `suspendService($msisdn)`, `resumeService($msisdn)`, `imeiLock($imei)` y `imeiUnlock($imei)`
 - `users($query)`, `user($uri)`, `createUser($data)`, `updateUser($uri, $data)` y `deleteUser($uri)`
 

@@ -39,9 +39,17 @@ class AlizeClient extends HelaAppClient
     /**
      * @param array<string, mixed> $data
      */
+    public function validatePortability(array $data): GenericDto
+    {
+        return $this->dto($this->post('/api/portabilities/validate', $data), GenericDto::class);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
     public function requestPortability(array $data): GenericDto
     {
-        return $this->dto($this->post('/api/portabilities/request', $data), GenericDto::class);
+        return $this->dto($this->post('/api/portabilities', $data), GenericDto::class);
     }
 
     public function deletePortability(int|string $portabilityId): ApiResponseDto

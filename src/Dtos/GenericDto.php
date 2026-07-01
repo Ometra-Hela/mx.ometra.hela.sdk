@@ -8,4 +8,12 @@ final class GenericDto extends DataTransferObject
     {
         return new self(self::normalize($payload));
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return $this->attributes;
+    }
 }

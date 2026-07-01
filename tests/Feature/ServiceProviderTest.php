@@ -65,7 +65,11 @@ class ServiceProviderTest extends TestCase
                 ['GET', '/api/portabilities/transitories'] => Http::response([
                     'data' => [['msisdn' => '525500000001']],
                 ]),
-                ['POST', '/api/portabilities/request'] => Http::response([
+                ['POST', '/api/portabilities/validate'] => Http::response([
+                    'valid' => true,
+                    'data' => ['external_client_id' => 'CLI-1'],
+                ]),
+                ['POST', '/api/portabilities'] => Http::response([
                     'data' => ['id' => 10, 'state' => 'REQUESTED'],
                 ], 201),
                 ['DELETE', '/api/portabilities/10'] => Http::response([
@@ -91,9 +95,18 @@ class ServiceProviderTest extends TestCase
         $byMsisdn = $client->portabilitiesByMsisdn('525512345678');
         $transitories = $client->portabilityTransitories();
         $created = $client->requestPortability([
-            'msisdnPorted' => '525512345678',
-            'msisdnTransitory' => '525500000001',
-            'nip' => '1234',
+            'numbers' => [[
+                'msisdn_ported' => '525512345678',
+                'msisdn_transitory' => '525500000001',
+                'nip' => '1234',
+            ]],
+        ]);
+        $validated = $client->validatePortability([
+            'numbers' => [[
+                'msisdn_ported' => '525512345678',
+                'msisdn_transitory' => '525500000001',
+                'nip' => '1234',
+            ]],
         ]);
         $deleted = $client->deletePortability(10);
         $execute = $client->executeAusterPortability(10, ['idempotency_key' => 'key']);
@@ -105,6 +118,7 @@ class ServiceProviderTest extends TestCase
         $this->assertSame(10, $byMsisdn->id);
         $this->assertSame('525500000001', $transitories->first()->msisdn);
         $this->assertSame('REQUESTED', $created->state);
+        $this->assertSame('CLI-1', $validated->external_client_id);
         $this->assertSame('Portability deleted', $deleted->message);
         $this->assertSame('Portability execute accepted.', $execute->message);
         $this->assertSame('Portability completion applied.', $complete->message);
@@ -117,7 +131,7 @@ class ServiceProviderTest extends TestCase
                 && $request->hasHeader('Authorization', 'Bearer alize-secret')
                 && $request->hasHeader('X-Hela-App', 'auster');
         });
-        Http::assertSentCount(8);
+        Http::assertSentCount(9);
     }
 
     public function test_facade_resolves_the_sdk(): void
