@@ -485,4 +485,9 @@ class AusterClient extends HelaAppClient
     {
         return $this->apiResponse($this->post('/api/zephyr-runner/instances/status', $data));
     }
+
+    public function discountCode(int|string $idOrder, array $data): ApiResponseDto
+    {
+        return $this->apiResponse($this->post("/api/orders/{$idOrder}/set-discount-code", $data));
+    }
 }
