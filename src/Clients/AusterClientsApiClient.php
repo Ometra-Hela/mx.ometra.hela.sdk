@@ -4,17 +4,24 @@ namespace Ometra\HelaSdk\Clients;
 
 use Illuminate\Http\Client\Response;
 use Ometra\HelaSdk\Dtos\ApiResponseDto;
+use Ometra\HelaSdk\Dtos\ActivityDto;
 use Ometra\HelaSdk\Dtos\AuthTokenDto;
 use Ometra\HelaSdk\Dtos\DtoCollection;
+use Ometra\HelaSdk\Dtos\DocumentDto;
 use Ometra\HelaSdk\Dtos\GenericDto;
+use Ometra\HelaSdk\Dtos\InvoiceDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\NotificationPreferencesDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
+use Ometra\HelaSdk\Dtos\PortabilityDto;
 use Ometra\HelaSdk\Dtos\ServiceBulkOperationDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
 use Ometra\HelaSdk\Dtos\ServiceGroupDto;
+use Ometra\HelaSdk\Dtos\ScheduledTopupDto;
+use Ometra\HelaSdk\Dtos\TaxProfileDto;
 use Ometra\HelaSdk\Dtos\UserProfileDto;
 use Ometra\HelaSdk\Dtos\WalletBalanceDto;
+use Ometra\HelaSdk\Dtos\WalletTransactionDto;
 
 class AusterClientsApiClient extends HelaAppClient
 {
@@ -108,7 +115,7 @@ class AusterClientsApiClient extends HelaAppClient
     public function getNotificationPreferences(): NotificationPreferencesDto
     {
         return $this->dto(
-            $this->get('/api/user-profile/notification-preferences'),
+            $this->get('/clients-api/user-profile/notification-preferences'),
             NotificationPreferencesDto::class,
         );
     }
@@ -117,7 +124,7 @@ class AusterClientsApiClient extends HelaAppClient
     public function updateNotificationPreferences(array $preferences): NotificationPreferencesDto
     {
         return $this->dto(
-            $this->put('/api/user-profile/notification-preferences', ['preferences' => $preferences]),
+            $this->put('/clients-api/user-profile/notification-preferences', ['preferences' => $preferences]),
             NotificationPreferencesDto::class,
         );
     }
@@ -194,7 +201,7 @@ class AusterClientsApiClient extends HelaAppClient
     /**
      * @param array<string, mixed> $query
      *
-     * @return DtoCollection<GenericDto>
+     * @return DtoCollection<InvoiceDto>
      */
     public function invoices(
         array $query = [],
@@ -214,13 +221,13 @@ class AusterClientsApiClient extends HelaAppClient
                 'page',
                 'perPage',
             ))),
-            GenericDto::class,
+            InvoiceDto::class,
         );
     }
 
-    public function invoice(int|string $invoiceId): GenericDto
+    public function invoice(int|string $invoiceId): InvoiceDto
     {
-        return $this->dto($this->get('/clients-api/accounting/invoices/' . $invoiceId), GenericDto::class);
+        return $this->dto($this->get('/clients-api/accounting/invoices/' . $invoiceId), InvoiceDto::class);
     }
 
     public function downloadInvoice(int|string $invoiceId): Response
@@ -364,6 +371,57 @@ class AusterClientsApiClient extends HelaAppClient
         return $this->apiResponse($this->post('/clients-api/orders/' . $orderId . '/payments', $data));
     }
 
+    /** @param array<string, mixed> $data */
+    public function cancelOrder(int|string $orderId, array $data = []): ApiResponseDto
+    {
+        return $this->apiResponse($this->delete('/clients-api/orders/' . $orderId, $data));
+    }
+
+    /** @param array<string, mixed> $query @return DtoCollection<ActivityDto> */
+    public function activity(array $query = []): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/clients-api/activity', $query), ActivityDto::class);
+    }
+
+    /** @return DtoCollection<ScheduledTopupDto> */
+    public function scheduledTopups(): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/clients-api/scheduled-topups'), ScheduledTopupDto::class, 'schedules');
+    }
+
+    /** @param array<string, mixed> $data */
+    public function previewScheduledTopup(array $data): GenericDto
+    {
+        return $this->dto($this->post('/clients-api/scheduled-topups/preview', $data), GenericDto::class, 'preview');
+    }
+
+    /** @param array<string, mixed> $data */
+    public function createScheduledTopup(array $data): ScheduledTopupDto
+    {
+        return $this->dto($this->post('/clients-api/scheduled-topups', $data), ScheduledTopupDto::class, 'schedule');
+    }
+
+    /** @param array<string, mixed> $data */
+    public function updateScheduledTopup(int|string $scheduleId, array $data): ScheduledTopupDto
+    {
+        return $this->dto($this->put('/clients-api/scheduled-topups/' . $scheduleId, $data), ScheduledTopupDto::class, 'schedule');
+    }
+
+    public function pauseScheduledTopup(int|string $scheduleId): ScheduledTopupDto
+    {
+        return $this->dto($this->post('/clients-api/scheduled-topups/' . $scheduleId . '/pause'), ScheduledTopupDto::class, 'schedule');
+    }
+
+    public function resumeScheduledTopup(int|string $scheduleId): ScheduledTopupDto
+    {
+        return $this->dto($this->post('/clients-api/scheduled-topups/' . $scheduleId . '/resume'), ScheduledTopupDto::class, 'schedule');
+    }
+
+    public function cancelScheduledTopup(int|string $scheduleId): ScheduledTopupDto
+    {
+        return $this->dto($this->delete('/clients-api/scheduled-topups/' . $scheduleId), ScheduledTopupDto::class, 'schedule');
+    }
+
     /**
      * @param array<string, mixed> $query
      *
@@ -371,20 +429,20 @@ class AusterClientsApiClient extends HelaAppClient
      */
     public function portabilities(array $query = []): DtoCollection
     {
-        return $this->dtoCollection($this->get('/clients-api/portability', $query), GenericDto::class);
+        return $this->dtoCollection($this->get('/clients-api/portability', $query), PortabilityDto::class);
     }
 
-    public function portability(int|string $portabilityId): GenericDto
+    public function portability(int|string $portabilityId): PortabilityDto
     {
-        return $this->dto($this->get('/clients-api/portability/' . $portabilityId), GenericDto::class);
+        return $this->dto($this->get('/clients-api/portability/' . $portabilityId), PortabilityDto::class);
     }
 
     /**
-     * @return DtoCollection<GenericDto>
+     * @return DtoCollection<PortabilityDto>
      */
     public function portabilityTransitories(): DtoCollection
     {
-        return $this->dtoCollection($this->get('/clients-api/portability/transitories'), GenericDto::class);
+        return $this->dtoCollection($this->get('/clients-api/portability/transitories'), PortabilityDto::class);
     }
 
     /**
@@ -700,35 +758,35 @@ class AusterClientsApiClient extends HelaAppClient
      */
     public function walletTransactions(array $query = []): DtoCollection
     {
-        return $this->dtoCollection($this->get('/clients-api/wallet/transactions', $query), GenericDto::class);
+        return $this->dtoCollection($this->get('/clients-api/wallet/transactions', $query), WalletTransactionDto::class);
     }
 
     /**
      * @param array<string, mixed> $query
      *
-     * @return DtoCollection<GenericDto>
+     * @return DtoCollection<DocumentDto>
      */
     public function documents(array $query = []): DtoCollection
     {
-        return $this->dtoCollection($this->get('/clients-api/documents', $query), GenericDto::class);
+        return $this->dtoCollection($this->get('/clients-api/documents', $query), DocumentDto::class);
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    public function storeDocument(string $documentKey, array $data): GenericDto
+    public function storeDocument(string $documentKey, array $data): DocumentDto
     {
-        return $this->dto($this->postMultipart('/clients-api/documents/' . rawurlencode($documentKey), $data), GenericDto::class);
+        return $this->dto($this->postMultipart('/clients-api/documents/' . rawurlencode($documentKey), $data), DocumentDto::class);
     }
 
     /**
-     * @return DtoCollection<GenericDto>
+     * @return DtoCollection<DocumentDto>
      */
     public function documentVersions(string $documentKey): DtoCollection
     {
         return $this->dtoCollection(
             $this->get('/clients-api/documents/' . rawurlencode($documentKey) . '/versions'),
-            GenericDto::class,
+            DocumentDto::class,
         );
     }
 
@@ -742,19 +800,19 @@ class AusterClientsApiClient extends HelaAppClient
     /**
      * @param array<string, mixed> $query
      *
-     * @return DtoCollection<GenericDto>
+     * @return DtoCollection<TaxProfileDto>
      */
     public function taxProfiles(array $query = []): DtoCollection
     {
-        return $this->dtoCollection($this->get('/clients-api/tax-profiles', $query), GenericDto::class);
+        return $this->dtoCollection($this->get('/clients-api/tax-profiles', $query), TaxProfileDto::class);
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    public function createTaxProfile(array $data): GenericDto
+    public function createTaxProfile(array $data): TaxProfileDto
     {
-        return $this->dto($this->post('/clients-api/tax-profiles', $data), GenericDto::class);
+        return $this->dto($this->post('/clients-api/tax-profiles', $data), TaxProfileDto::class);
     }
 
     public function taxProfileCatalogs(): GenericDto
@@ -762,17 +820,17 @@ class AusterClientsApiClient extends HelaAppClient
         return $this->dto($this->get('/clients-api/tax-profiles/catalogs'), GenericDto::class);
     }
 
-    public function taxProfile(string $uid): GenericDto
+    public function taxProfile(string $uid): TaxProfileDto
     {
-        return $this->dto($this->get('/clients-api/tax-profiles/' . rawurlencode($uid)), GenericDto::class);
+        return $this->dto($this->get('/clients-api/tax-profiles/' . rawurlencode($uid)), TaxProfileDto::class);
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    public function updateTaxProfile(string $uid, array $data): GenericDto
+    public function updateTaxProfile(string $uid, array $data): TaxProfileDto
     {
-        return $this->dto($this->put('/clients-api/tax-profiles/' . rawurlencode($uid), $data), GenericDto::class);
+        return $this->dto($this->put('/clients-api/tax-profiles/' . rawurlencode($uid), $data), TaxProfileDto::class);
     }
 
     public function deleteTaxProfile(string $uid): ApiResponseDto

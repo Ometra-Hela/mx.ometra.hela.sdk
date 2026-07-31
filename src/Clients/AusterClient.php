@@ -9,6 +9,7 @@ use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
 use Ometra\HelaSdk\Dtos\OrderItemDto;
 use Ometra\HelaSdk\Dtos\PaymentDto;
+use Ometra\HelaSdk\Dtos\PortabilityDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
 
 class AusterClient extends HelaAppClient
@@ -174,7 +175,7 @@ class AusterClient extends HelaAppClient
         return $this->clientsApi()->portabilities($query);
     }
 
-    public function portability(int|string $portabilityId): GenericDto
+    public function portability(int|string $portabilityId): PortabilityDto
     {
         return $this->clientsApi()->portability($portabilityId);
     }

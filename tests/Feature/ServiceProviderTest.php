@@ -5,18 +5,25 @@ namespace Ometra\HelaSdk\Tests\Feature;
 use Illuminate\Support\Facades\Http;
 use Ometra\HelaSdk\Clients\AusterClient;
 use Ometra\HelaSdk\Dtos\ApiResponseDto;
+use Ometra\HelaSdk\Dtos\ActivityDto;
 use Ometra\HelaSdk\Dtos\AuthTokenDto;
 use Ometra\HelaSdk\Dtos\DtoCollection;
+use Ometra\HelaSdk\Dtos\DocumentDto;
 use Ometra\HelaSdk\Dtos\GenericDto;
+use Ometra\HelaSdk\Dtos\InvoiceDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
 use Ometra\HelaSdk\Dtos\NotificationPreferencesDto;
 use Ometra\HelaSdk\Dtos\OrderItemDto;
+use Ometra\HelaSdk\Dtos\PortabilityDto;
 use Ometra\HelaSdk\Dtos\ServiceBulkOperationDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
 use Ometra\HelaSdk\Dtos\ServiceGroupDto;
+use Ometra\HelaSdk\Dtos\ScheduledTopupDto;
+use Ometra\HelaSdk\Dtos\TaxProfileDto;
 use Ometra\HelaSdk\Dtos\UserProfileDto;
 use Ometra\HelaSdk\Dtos\WalletBalanceDto;
+use Ometra\HelaSdk\Dtos\WalletTransactionDto;
 use Ometra\HelaSdk\Exceptions\HelaRequestException;
 use Ometra\HelaSdk\Facades\HelaSdk as HelaSdkFacade;
 use Ometra\HelaSdk\HelaSdk;
@@ -92,8 +99,10 @@ class ServiceProviderTest extends TestCase
         $deleted = $client->deletePortability(10);
 
         $this->assertInstanceOf(DtoCollection::class, $portabilities);
+        $this->assertInstanceOf(PortabilityDto::class, $portabilities->first());
         $this->assertSame('PORT_SCHEDULED', $portabilities->first()->state);
         $this->assertSame(10, $portability->id);
+        $this->assertInstanceOf(PortabilityDto::class, $portability);
         $this->assertSame('525500000001', $transitories->first()->msisdn);
         $this->assertSame('REQUESTED', $created->state);
         $this->assertSame('CLI-1', $validated->external_client_id);
@@ -639,7 +648,7 @@ class ServiceProviderTest extends TestCase
     public function test_auster_clients_api_manages_notification_preferences(): void
     {
         Http::fake([
-            'https://auster.example.test/api/user-profile/notification-preferences' => Http::response([
+            'https://auster.example.test/clients-api/user-profile/notification-preferences' => Http::response([
                 'data' => [
                     'catalog' => [['key' => 'payment_reminder', 'configurable' => true]],
                     'preferences' => [['notification_key' => 'payment_reminder', 'channels' => ['email', 'sms']]],
@@ -1207,12 +1216,17 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('MXN', $wallet->currency);
         $this->assertSame('active', $wallet->status);
         $this->assertSame(25, $transactions->first()->amount);
+        $this->assertInstanceOf(WalletTransactionDto::class, $transactions->first());
         $this->assertSame('csf', $documents->first()->document_key);
+        $this->assertInstanceOf(DocumentDto::class, $documents->first());
         $this->assertSame('uploaded', $storedDocument->status);
+        $this->assertInstanceOf(DocumentDto::class, $storedDocument);
         $this->assertSame(12, $versions->first()->id_document);
         $this->assertSame('pdf-bytes', $download->body());
         $this->assertSame('tax-1', $taxProfiles->first()->uid);
+        $this->assertInstanceOf(TaxProfileDto::class, $taxProfiles->first());
         $this->assertSame('tax-2', $createdTaxProfile->uid);
+        $this->assertInstanceOf(TaxProfileDto::class, $createdTaxProfile);
         $this->assertSame('601', $taxCatalogs->regimes[0]['value']);
         $this->assertSame('XAXX010101000', $taxProfile->rfc);
         $this->assertSame('Updated', $updatedTaxProfile->name);
@@ -1361,6 +1375,49 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('queued', $retry->status);
         $this->assertSame(78, $latest->idServiceBulkOperation);
         Http::assertSentCount(13);
+    }
+
+    public function test_auster_clients_api_exposes_enterprise_activity_order_cancellation_and_scheduled_topups(): void
+    {
+        Http::fake(function ($request) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+
+            if ($path === '/clients-api/activity') {
+                return Http::response(['data' => ['data' => [['id' => 1, 'action' => 'service.suspended', 'executor' => 'admin@acme.test']]]]);
+            }
+            if ($path === '/clients-api/orders/501') {
+                return Http::response(['message' => 'Orden cancelada correctamente']);
+            }
+            if ($path === '/clients-api/scheduled-topups/preview') {
+                return Http::response(['ok' => true, 'preview' => ['eligible_count' => 3, 'total_amount' => 300]]);
+            }
+            if ($path === '/clients-api/scheduled-topups') {
+                if ($request->method() === 'GET') {
+                    return Http::response(['ok' => true, 'schedules' => [['id' => 9, 'target_type' => 'group', 'target_id' => 3, 'status' => 'active']]]);
+                }
+                return Http::response(['ok' => true, 'schedule' => ['id' => 10, 'target_type' => 'service', 'target_id' => 5, 'status' => 'active']], 201);
+            }
+            if (str_starts_with($path, '/clients-api/scheduled-topups/10')) {
+                $status = str_ends_with($path, '/pause') ? 'paused' : (str_ends_with($path, '/resume') ? 'active' : (str_ends_with($path, '/10') && $request->method() === 'DELETE' ? 'cancelled' : 'active'));
+                return Http::response(['ok' => true, 'schedule' => ['id' => 10, 'target_type' => 'service', 'target_id' => 5, 'status' => $status]]);
+            }
+            return Http::response(['message' => 'Unexpected'], 404);
+        });
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+        $client = HelaSdkFacade::auster()->clientsApiAsClient('client-token');
+
+        $this->assertInstanceOf(ActivityDto::class, $client->activity()->first());
+        $this->assertSame('Orden cancelada correctamente', $client->cancelOrder(501)->message);
+        $this->assertSame(9, $client->scheduledTopups()->first()->id);
+        $this->assertSame(3, $client->previewScheduledTopup(['target_type' => 'group'])->eligible_count);
+        $created = $client->createScheduledTopup(['target_type' => 'service']);
+        $this->assertInstanceOf(ScheduledTopupDto::class, $created);
+        $this->assertSame('active', $client->updateScheduledTopup(10, ['offer_id' => 'OFFER-2'])->status);
+        $this->assertSame('paused', $client->pauseScheduledTopup(10)->status);
+        $this->assertSame('active', $client->resumeScheduledTopup(10)->status);
+        $this->assertSame('cancelled', $client->cancelScheduledTopup(10)->status);
+        Http::assertSentCount(9);
     }
 
     public function test_failed_responses_throw_structured_exception(): void

@@ -354,9 +354,14 @@ class HelaAppClient
      *
      * @return DtoCollection<T>
      */
-    protected function dtoCollection(Response $response, string $dtoClass): DtoCollection
+    protected function dtoCollection(Response $response, string $dtoClass, ?string $nestedKey = null): DtoCollection
     {
-        return DtoCollection::from($this->responseData($response), $dtoClass);
+        $payload = $this->responseData($response);
+        if ($nestedKey !== null && is_array($payload) && array_key_exists($nestedKey, $payload)) {
+            $payload = $payload[$nestedKey];
+        }
+
+        return DtoCollection::from($payload, $dtoClass);
     }
 
     protected function responseData(Response $response): mixed

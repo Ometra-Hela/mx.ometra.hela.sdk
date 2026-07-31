@@ -8,7 +8,7 @@ para consumir la API de Auster desde otros modulos.
 Instala el paquete desde Packagist:
 
 ```bash
-composer require ometra/hela-sdk:dev-master
+composer require ometra/hela-sdk:^0.3
 ```
 
 Laravel descubre automaticamente el service provider y el facade.
