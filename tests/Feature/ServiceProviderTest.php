@@ -10,11 +10,13 @@ use Ometra\HelaSdk\Dtos\DtoCollection;
 use Ometra\HelaSdk\Dtos\GenericDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
+use Ometra\HelaSdk\Dtos\NotificationPreferencesDto;
 use Ometra\HelaSdk\Dtos\OrderItemDto;
 use Ometra\HelaSdk\Dtos\ServiceBulkOperationDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
 use Ometra\HelaSdk\Dtos\ServiceGroupDto;
 use Ometra\HelaSdk\Dtos\UserProfileDto;
+use Ometra\HelaSdk\Dtos\WalletBalanceDto;
 use Ometra\HelaSdk\Exceptions\HelaRequestException;
 use Ometra\HelaSdk\Facades\HelaSdk as HelaSdkFacade;
 use Ometra\HelaSdk\HelaSdk;
@@ -376,19 +378,19 @@ class ServiceProviderTest extends TestCase
             'https://auster.example.test/api/orders/100/process' => Http::response([
                 'message' => 'Orden procesada',
             ]),
-            'https://auster.example.test/api/orders/100/unpublish' => Http::response([
+            'https://auster.example.test/api/orders/100/publication' => Http::response([
                 'data' => ['id_order' => 100, 'published' => false],
             ]),
-            'https://auster.example.test/api/orders/100/set-discount-code' => Http::response([
+            'https://auster.example.test/api/orders/100/discount-code' => Http::response([
                 'message' => 'Discount code applied.',
             ]),
             'https://auster.example.test/api/orders/100/items' => Http::response([
                 'data' => ['item' => ['id_orderItem' => 'ITM-1', 'item_type' => 'sim', 'description' => 'SIM']],
             ], 201),
-            'https://auster.example.test/api/orders/100/items/bulk-create' => Http::response([
+            'https://auster.example.test/api/orders/100/items/bulk' => Http::response([
                 'data' => ['created' => 2],
             ], 201),
-            'https://auster.example.test/api/orders/100/items/bulk-assign-targets' => Http::response([
+            'https://auster.example.test/api/orders/100/items/targets' => Http::response([
                 'data' => ['assigned' => 2],
             ]),
             'https://auster.example.test/api/orders/100/items/ITM-1' => Http::response([
@@ -532,6 +534,60 @@ class ServiceProviderTest extends TestCase
         Http::assertSentCount(29);
     }
 
+    public function test_auster_client_uses_every_rest_order_route(): void
+    {
+        Http::fake(function ($request) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+            $method = $request->method();
+
+            return match ([$method, $path]) {
+                ['POST', '/api/orders'] => Http::response(['data' => ['id_order' => 100]], 201),
+                ['GET', '/api/orders'] => Http::response(['data' => [['id_order' => 100]]]),
+                ['GET', '/api/orders/100'] => Http::response(['data' => ['id_order' => 100]]),
+                ['GET', '/api/orders/100/payments'] => Http::response(['data' => [['id_payment' => 5]]]),
+                ['PUT', '/api/orders/100/publication'] => Http::response(['data' => ['id_order' => 100]]),
+                ['POST', '/api/orders/100/process'],
+                ['POST', '/api/orders/100/cancel'],
+                ['POST', '/api/orders/100/payments'],
+                ['PUT', '/api/orders/100/discount-code'] => Http::response(['message' => 'ok']),
+                ['POST', '/api/orders/100/items'] => Http::response(['data' => ['item' => ['id_orderItem' => 'ITM-1']]], 201),
+                ['POST', '/api/orders/100/items/bulk'] => Http::response(['data' => ['created_count' => 2]], 201),
+                ['PATCH', '/api/orders/100/items/targets'] => Http::response(['data' => ['updated_count' => 2]]),
+                ['PATCH', '/api/orders/100/items/ITM-1'] => Http::response(['data' => ['item' => ['id_orderItem' => 'ITM-1']]]),
+                ['DELETE', '/api/orders/100/items/ITM-1'] => Http::response(null, 204),
+                default => Http::response(['message' => 'Unexpected request'], 404),
+            };
+        });
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+        $client = HelaSdkFacade::auster();
+
+        $client->createOrder(['id_client' => 'CLI-1', 'id_salesChannel' => 'DS']);
+        $client->order(100);
+        $client->orderByMsisdn('525512345678');
+        $client->orderPayment(100);
+        $client->publishOrder(100);
+        $client->unpublishOrder(100);
+        $client->processOrder(100);
+        $client->cancelOrder(100);
+        $client->addOrderPayment(100, ['amount' => 100, 'payment_method' => 'cash']);
+        $client->setOrderDiscountCode(100, ['discount_code' => 'PROMO']);
+        $client->addOrderItem(100, ['item' => ['type' => 'CUSTOM', 'key' => 'item']]);
+        $client->bulkCreateOrderItems(100, ['items' => []]);
+        $client->bulkAssignOrderItemTargets(100, ['targets' => []]);
+        $client->updateOrderItem(100, 'ITM-1', ['target' => '525512345678']);
+        $client->removeOrderItem(100, 'ITM-1');
+
+        Http::assertSent(function ($request): bool {
+            parse_str(parse_url($request->url(), PHP_URL_QUERY) ?: '', $query);
+
+            return $request->method() === 'GET'
+                && parse_url($request->url(), PHP_URL_PATH) === '/api/orders'
+                && ($query['msisdn'] ?? null) === '525512345678';
+        });
+        Http::assertSentCount(15);
+    }
+
     public function test_auster_clients_api_without_explicit_token_does_not_send_authorization(): void
     {
         Http::fake([
@@ -577,6 +633,30 @@ class ServiceProviderTest extends TestCase
             return $request->url() === 'https://auster.example.test/clients-api/user-profile'
                 && $request->hasHeader('Authorization', 'Bearer USR-user-token');
         });
+    }
+
+    public function test_auster_clients_api_manages_notification_preferences(): void
+    {
+        Http::fake([
+            'https://auster.example.test/api/user-profile/notification-preferences' => Http::response([
+                'data' => [
+                    'catalog' => [['key' => 'payment_reminder', 'configurable' => true]],
+                    'preferences' => [['notification_key' => 'payment_reminder', 'channels' => ['email', 'sms']]],
+                ],
+            ]),
+        ]);
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+        $client = HelaSdkFacade::auster()->clientsApiAsUser('user-token');
+
+        $current = $client->getNotificationPreferences();
+        $updated = $client->updateNotificationPreferences([
+            ['notification_key' => 'payment_reminder', 'channels' => ['email', 'sms']],
+        ]);
+
+        $this->assertInstanceOf(NotificationPreferencesDto::class, $current);
+        $this->assertSame('payment_reminder', $updated->preferences()[0]['notification_key']);
+        Http::assertSentCount(2);
     }
 
     public function test_auster_clients_api_login_does_not_require_configured_token(): void
@@ -1060,7 +1140,12 @@ class ServiceProviderTest extends TestCase
                     'data' => ['id_payment' => 9],
                 ], 201),
                 ['GET', '/clients-api/wallet'] => Http::response([
-                    'data' => ['balance' => 150.25, 'currency' => 'MXN'],
+                    'data' => [
+                        'available_balance' => 150.25,
+                        'pending_balance' => 20.50,
+                        'currency' => 'MXN',
+                        'status' => 'active',
+                    ],
                 ]),
                 ['GET', '/clients-api/wallet/transactions'] => Http::response([
                     'data' => [['id_transaction' => 1, 'amount' => 25]],
@@ -1101,7 +1186,7 @@ class ServiceProviderTest extends TestCase
         $client = HelaSdkFacade::auster()->clientsApiAsClient('client-token');
 
         $payment = $client->addOrderPayment(501, ['amount' => 99]);
-        $wallet = $client->wallet();
+        $wallet = $client->walletBalance();
         $transactions = $client->walletTransactions();
         $documents = $client->documents();
         $storedDocument = $client->storeDocument('csf', ['file' => 'contents']);
@@ -1115,7 +1200,11 @@ class ServiceProviderTest extends TestCase
         $deletedTaxProfile = $client->deleteTaxProfile('tax-1');
 
         $this->assertSame('Payment added', $payment->message);
-        $this->assertSame(150.25, $wallet->balance);
+        $this->assertInstanceOf(WalletBalanceDto::class, $wallet);
+        $this->assertSame(150.25, $wallet->availableBalance);
+        $this->assertSame(20.50, $wallet->pendingBalance);
+        $this->assertSame('MXN', $wallet->currency);
+        $this->assertSame('active', $wallet->status);
         $this->assertSame(25, $transactions->first()->amount);
         $this->assertSame('csf', $documents->first()->document_key);
         $this->assertSame('uploaded', $storedDocument->status);
@@ -1128,6 +1217,51 @@ class ServiceProviderTest extends TestCase
         $this->assertSame('Updated', $updatedTaxProfile->name);
         $this->assertSame('Tax profile deleted', $deletedTaxProfile->message);
         Http::assertSentCount(13);
+    }
+
+    public function test_auster_clients_api_reads_typed_wallet_balance_for_user_token(): void
+    {
+        Http::fake([
+            'https://auster.example.test/clients-api/wallet' => Http::response([
+                'data' => [
+                    'available_balance' => 75.25,
+                    'pending_balance' => 10,
+                    'currency' => 'MXN',
+                    'status' => 'active',
+                ],
+            ]),
+        ]);
+
+        $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+
+        $wallet = HelaSdkFacade::auster()
+            ->clientsApiAsUser('user-token')
+            ->walletBalance();
+
+        $this->assertInstanceOf(WalletBalanceDto::class, $wallet);
+        $this->assertSame(75.25, $wallet->availableBalance);
+        $this->assertSame(10.0, $wallet->pendingBalance);
+        $this->assertSame('MXN', $wallet->currency);
+        $this->assertSame('active', $wallet->status);
+
+        Http::assertSent(function ($request): bool {
+            return $request->method() === 'GET'
+                && $request->url() === 'https://auster.example.test/clients-api/wallet'
+                && $request->hasHeader('Authorization', 'Bearer USR-user-token');
+        });
+        Http::assertSentCount(1);
+    }
+
+    public function test_wallet_balance_dto_accepts_legacy_balance_field(): void
+    {
+        $wallet = WalletBalanceDto::from([
+            'balance' => '42.50',
+            'currency' => 'MXN',
+        ]);
+
+        $this->assertSame(42.50, $wallet->availableBalance);
+        $this->assertSame(0.0, $wallet->pendingBalance);
+        $this->assertSame('active', $wallet->status);
     }
 
     public function test_auster_clients_api_exposes_service_groups_and_bulk_routes(): void

@@ -8,11 +8,13 @@ use Ometra\HelaSdk\Dtos\AuthTokenDto;
 use Ometra\HelaSdk\Dtos\DtoCollection;
 use Ometra\HelaSdk\Dtos\GenericDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
+use Ometra\HelaSdk\Dtos\NotificationPreferencesDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
 use Ometra\HelaSdk\Dtos\ServiceBulkOperationDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
 use Ometra\HelaSdk\Dtos\ServiceGroupDto;
 use Ometra\HelaSdk\Dtos\UserProfileDto;
+use Ometra\HelaSdk\Dtos\WalletBalanceDto;
 
 class AusterClientsApiClient extends HelaAppClient
 {
@@ -101,6 +103,23 @@ class AusterClientsApiClient extends HelaAppClient
     public function userProfile(): UserProfileDto
     {
         return $this->dto($this->get('/clients-api/user-profile'), UserProfileDto::class);
+    }
+
+    public function getNotificationPreferences(): NotificationPreferencesDto
+    {
+        return $this->dto(
+            $this->get('/api/user-profile/notification-preferences'),
+            NotificationPreferencesDto::class,
+        );
+    }
+
+    /** @param list<array{notification_key: string, channels: list<string>}> $preferences */
+    public function updateNotificationPreferences(array $preferences): NotificationPreferencesDto
+    {
+        return $this->dto(
+            $this->put('/api/user-profile/notification-preferences', ['preferences' => $preferences]),
+            NotificationPreferencesDto::class,
+        );
     }
 
     /**
@@ -654,9 +673,19 @@ class AusterClientsApiClient extends HelaAppClient
     /**
      * @param array<string, mixed> $query
      */
-    public function wallet(array $query = []): GenericDto
+    public function walletBalance(array $query = []): WalletBalanceDto
     {
-        return $this->dto($this->get('/clients-api/wallet', $query), GenericDto::class);
+        return $this->dto($this->get('/clients-api/wallet', $query), WalletBalanceDto::class);
+    }
+
+    /**
+     * Backwards-compatible alias for walletBalance().
+     *
+     * @param array<string, mixed> $query
+     */
+    public function wallet(array $query = []): WalletBalanceDto
+    {
+        return $this->walletBalance($query);
     }
 
     /**

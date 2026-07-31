@@ -86,6 +86,11 @@ Atajos disponibles inicialmente:
 - `createOrder($data)`, `order($id)`, `orderByMsisdn($msisdn)`, `orderPayment($id)`, `publishOrder($id)`, `processOrder($id)`, `cancelOrder($id)` y `addOrderPayment($id, $data)`
 - `validatePayment($id)` y `cancelPayment($id)`
 
+Los helpers de pedidos usan exclusivamente el contrato REST `/api/orders`:
+coleccion y alta en `/api/orders`, pagos en `/payments`, publicacion mediante
+`PUT /publication`, codigo de descuento mediante `PUT /discount-code` y
+articulos bajo `/items`. Las rutas antiguas no tienen alias de compatibilidad.
+
 ### Clients API de Auster
 
 ```php
@@ -94,6 +99,23 @@ use Ometra\HelaSdk\Facades\HelaSdk;
 $profile = HelaSdk::auster()->clientsApi()->clientProfile();
 $services = HelaSdk::auster()->clientsApi()->services(filter: '525512345678');
 $service = HelaSdk::auster()->clientsApi()->service('525512345678');
+$wallet = HelaSdk::auster()->clientsApiAsUser('user-session-token')->walletBalance();
+
+$availableBalance = $wallet->availableBalance;
+$pendingBalance = $wallet->pendingBalance;
+$currency = $wallet->currency;
+$status = $wallet->status;
+
+$notifications = HelaSdk::auster()
+    ->clientsApiAsUser('user-session-token')
+    ->getNotificationPreferences();
+
+$updatedNotifications = HelaSdk::auster()
+    ->clientsApiAsUser('user-session-token')
+    ->updateNotificationPreferences([
+        ['notification_key' => 'welcome_web', 'channels' => ['email', 'sms']],
+        ['notification_key' => 'payment_reminder', 'channels' => ['email']],
+    ]);
 ```
 
 Las busquedas textuales en Auster usan el query param `filter`. Usa ese nombre
@@ -119,9 +141,10 @@ $userProfile = HelaSdk::auster()
 Atajos disponibles para `clients-api`:
 
 - `login($data)`, `signup($data)`, `requestPasswordReset($data)`, `validatePasswordResetToken($token)`, `resetPassword($token, $data)`, `logout()` y `logoutAll()`
-- `clientProfile()`, `userProfile()` y `simCards($query)`
+- `clientProfile()`, `userProfile()`, `getNotificationPreferences()`, `updateNotificationPreferences($preferences)` y `simCards($query)`
 - `heartbeat($data)`
 - `balance($query)`, `invoices($query)`, `invoice($id)` y `downloadInvoice($id)`
+- `walletBalance($query)` —tambien disponible como `wallet($query)`— y `walletTransactions($query)`
 - `catalogOffers($query)`
 - `cfdi($query)`, `cfdiOrders()`, `requestCfdi($data)` y `downloadCfdi($uid, $format)`
 - `orders($query)`, `order($id)` y `createOrder($data)`
