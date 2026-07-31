@@ -107,7 +107,7 @@ class AusterClient extends HelaAppClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array{subscriber_type: 'INDIVIDUAL'|'BUSINESS', numbers: array<int, array{msisdn_ported: string, msisdn_transitory: string, nip: string}>, comments?: string|null} $data
      */
     public function generateClientVerificationCode(array $data): ApiResponseDto
     {
@@ -115,7 +115,7 @@ class AusterClient extends HelaAppClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array{subscriber_type: 'INDIVIDUAL'|'BUSINESS', numbers: array<int, array{msisdn_ported: string, msisdn_transitory: string, nip: string}>, comments?: string|null, auto_submit?: bool} $data
      */
     public function confirmClientVerificationCode(array $data): ApiResponseDto
     {

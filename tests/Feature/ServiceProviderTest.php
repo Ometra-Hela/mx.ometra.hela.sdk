@@ -52,10 +52,10 @@ class ServiceProviderTest extends TestCase
 
             return match ([$method, $path]) {
                 ['GET', '/clients-api/portability'] => Http::response([
-                    'data' => [['id' => 10, 'state' => 'PORT_SCHEDULED']],
+                    'data' => [['id' => 10, 'state' => 'PORT_SCHEDULED', 'subscriber_type' => 'BUSINESS']],
                 ]),
                 ['GET', '/clients-api/portability/10'] => Http::response([
-                    'data' => ['id' => 10, 'state' => 'PORT_SCHEDULED'],
+                    'data' => ['id' => 10, 'state' => 'PORT_SCHEDULED', 'subscriber_type' => 'INDIVIDUAL'],
                 ]),
                 ['GET', '/clients-api/portability/transitories'] => Http::response([
                     'data' => [['msisdn' => '525500000001']],
@@ -83,6 +83,7 @@ class ServiceProviderTest extends TestCase
         $portability = $client->portability(10);
         $transitories = $client->portabilityTransitories();
         $created = $client->requestPortability([
+            'subscriber_type' => PortabilityDto::SUBSCRIBER_TYPE_BUSINESS,
             'numbers' => [[
                 'msisdn_ported' => '525512345678',
                 'msisdn_transitory' => '525500000001',
@@ -90,6 +91,7 @@ class ServiceProviderTest extends TestCase
             ]],
         ]);
         $validated = $client->validatePortability([
+            'subscriber_type' => PortabilityDto::SUBSCRIBER_TYPE_INDIVIDUAL,
             'numbers' => [[
                 'msisdn_ported' => '525512345678',
                 'msisdn_transitory' => '525500000001',
@@ -101,8 +103,11 @@ class ServiceProviderTest extends TestCase
         $this->assertInstanceOf(DtoCollection::class, $portabilities);
         $this->assertInstanceOf(PortabilityDto::class, $portabilities->first());
         $this->assertSame('PORT_SCHEDULED', $portabilities->first()->state);
+        $this->assertSame('PORT_SCHEDULED', $portabilities->first()->status);
+        $this->assertSame('BUSINESS', $portabilities->first()->subscriberType);
         $this->assertSame(10, $portability->id);
         $this->assertInstanceOf(PortabilityDto::class, $portability);
+        $this->assertSame('INDIVIDUAL', $portability->subscriberType);
         $this->assertSame('525500000001', $transitories->first()->msisdn);
         $this->assertSame('REQUESTED', $created->state);
         $this->assertSame('CLI-1', $validated->external_client_id);
@@ -116,6 +121,10 @@ class ServiceProviderTest extends TestCase
                 && $request->hasHeader('Authorization', 'Bearer API-client-token')
                 && $request->hasHeader('X-Hela-App', 'auster');
         });
+        Http::assertSent(fn ($request): bool => parse_url($request->url(), PHP_URL_PATH) === '/clients-api/portability/request'
+            && $request['subscriber_type'] === 'BUSINESS');
+        Http::assertSent(fn ($request): bool => parse_url($request->url(), PHP_URL_PATH) === '/clients-api/portability/validate'
+            && $request['subscriber_type'] === 'INDIVIDUAL');
         Http::assertSentCount(6);
     }
 
