@@ -493,6 +493,6 @@ class AusterClient extends HelaAppClient
 
     public function discountCode(int|string $idOrder, array $data): ApiResponseDto
     {
-        return $this->apiResponse($this->post("/api/orders/{$idOrder}/set-discount-code", $data));
+        return $this->setOrderDiscountCode($idOrder, $data);
     }
 }

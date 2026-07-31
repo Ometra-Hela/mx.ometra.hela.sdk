@@ -261,6 +261,11 @@ class AusterClientsApiClient extends HelaAppClient
         return $this->dtoCollection($this->get('/clients-api/catalogs/payment-methods'), GenericDto::class);
     }
 
+    public function referralProgram(): GenericDto
+    {
+        return $this->dto($this->get('/clients-api/catalogs/referral-program'), GenericDto::class);
+    }
+
     /**
      * @param array<string, mixed> $query
      *

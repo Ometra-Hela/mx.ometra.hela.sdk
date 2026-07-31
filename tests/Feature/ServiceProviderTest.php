@@ -572,6 +572,7 @@ class ServiceProviderTest extends TestCase
         $client->cancelOrder(100);
         $client->addOrderPayment(100, ['amount' => 100, 'payment_method' => 'cash']);
         $client->setOrderDiscountCode(100, ['discount_code' => 'PROMO']);
+        $client->discountCode(100, ['discount_code' => 'PROMO']);
         $client->addOrderItem(100, ['item' => ['type' => 'CUSTOM', 'key' => 'item']]);
         $client->bulkCreateOrderItems(100, ['items' => []]);
         $client->bulkAssignOrderItemTargets(100, ['targets' => []]);
@@ -585,7 +586,7 @@ class ServiceProviderTest extends TestCase
                 && parse_url($request->url(), PHP_URL_PATH) === '/api/orders'
                 && ($query['msisdn'] ?? null) === '525512345678';
         });
-        Http::assertSentCount(15);
+        Http::assertSentCount(16);
     }
 
     public function test_auster_clients_api_without_explicit_token_does_not_send_authorization(): void
@@ -1274,6 +1275,9 @@ class ServiceProviderTest extends TestCase
                 ['GET', '/clients-api/catalogs/payment-methods'] => Http::response([
                     'data' => [['value' => 'SPEI', 'label' => 'Transferencia']],
                 ]),
+                ['GET', '/clients-api/catalogs/referral-program'] => Http::response([
+                    'data' => ['enabled' => true, 'reward' => 100],
+                ]),
                 ['GET', '/clients-api/service-groups'] => Http::response([
                     'data' => [[
                         'id_serviceGroup' => 3,
@@ -1326,6 +1330,7 @@ class ServiceProviderTest extends TestCase
         $client = HelaSdkFacade::auster()->clientsApiAsClient('client-token');
 
         $paymentMethods = $client->paymentMethods();
+        $referralProgram = $client->referralProgram();
         $groups = $client->serviceGroups();
         $created = $client->createServiceGroup(['name' => 'Ventas', 'icon' => 'users']);
         $updated = $client->updateServiceGroup(4, ['name' => 'Ventas MX']);
@@ -1340,6 +1345,8 @@ class ServiceProviderTest extends TestCase
 
         $this->assertInstanceOf(DtoCollection::class, $paymentMethods);
         $this->assertSame('SPEI', $paymentMethods->first()->value);
+        $this->assertTrue($referralProgram->enabled);
+        $this->assertSame(100, $referralProgram->reward);
         $this->assertInstanceOf(ServiceGroupDto::class, $groups->first());
         $this->assertSame(3, $groups->first()->idServiceGroup);
         $this->assertSame('Ventas', $created->name);
@@ -1353,7 +1360,7 @@ class ServiceProviderTest extends TestCase
         $this->assertTrue($operation->isTerminal);
         $this->assertSame('queued', $retry->status);
         $this->assertSame(78, $latest->idServiceBulkOperation);
-        Http::assertSentCount(12);
+        Http::assertSentCount(13);
     }
 
     public function test_failed_responses_throw_structured_exception(): void
