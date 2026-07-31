@@ -100,6 +100,13 @@ $profile = HelaSdk::auster()->clientsApi()->clientProfile();
 $services = HelaSdk::auster()->clientsApi()->services(filter: '525512345678');
 $service = HelaSdk::auster()->clientsApi()->service('525512345678');
 $wallet = HelaSdk::auster()->clientsApiAsUser('user-session-token')->walletBalance();
+$dashboard = HelaSdk::auster()->clientsApiAsClient('client-token')->dashboard('30d');
+$spending = HelaSdk::auster()->clientsApiAsClient('client-token')->report(
+    'spending',
+    '2026-07-01',
+    '2026-07-31',
+    'day',
+);
 
 $availableBalance = $wallet->availableBalance;
 $pendingBalance = $wallet->pendingBalance;
@@ -145,7 +152,8 @@ Atajos disponibles para `clients-api`:
 - `heartbeat($data)`
 - `balance($query)`, `invoices($query)`, `invoice($id)` y `downloadInvoice($id)`
 - `walletBalance($query)` —tambien disponible como `wallet($query)`— y `walletTransactions($query)`
-- `catalogOffers($query)`
+- `catalogOffers($query)` devuelve el catalogo efectivo del cliente. `OfferDto` expone `listPrice`, `effectivePrice`, `hasClientPrice`, `purchasable` y `capabilities`, conservando `publicPrice`.
+- `dashboard($period)` y `report($type, $from, $to, $groupBy)` para agregados de autogestion. Los tipos de reporte iniciales son `spending`, `services`, `inventory`, `billing` y `operations`.
 - `cfdi($query)`, `cfdiOrders()`, `requestCfdi($data)` y `downloadCfdi($uid, $format)`
 - `orders($query)`, `order($id)` y `createOrder($data)`
 - `portabilities($query)`, `portability($id)`, `portabilityTransitories()`, `validatePortability($data)`, `requestPortability($data)` y `deletePortability($id)`.

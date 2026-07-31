@@ -8,12 +8,14 @@ use Ometra\HelaSdk\Dtos\ActivityDto;
 use Ometra\HelaSdk\Dtos\AuthTokenDto;
 use Ometra\HelaSdk\Dtos\DtoCollection;
 use Ometra\HelaSdk\Dtos\DocumentDto;
+use Ometra\HelaSdk\Dtos\DashboardDto;
 use Ometra\HelaSdk\Dtos\GenericDto;
 use Ometra\HelaSdk\Dtos\InvoiceDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\NotificationPreferencesDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
 use Ometra\HelaSdk\Dtos\PortabilityDto;
+use Ometra\HelaSdk\Dtos\ReportDto;
 use Ometra\HelaSdk\Dtos\ServiceBulkOperationDto;
 use Ometra\HelaSdk\Dtos\ServiceDto;
 use Ometra\HelaSdk\Dtos\ServiceGroupDto;
@@ -257,6 +259,35 @@ class AusterClientsApiClient extends HelaAppClient
                 'allowsNewLineActivation',
             ))),
             OfferDto::class,
+        );
+    }
+
+    public function dashboard(?string $period = null, array $query = []): DashboardDto
+    {
+        return $this->dto(
+            $this->get('/clients-api/dashboard', $this->mergeQuery($query, compact('period'))),
+            DashboardDto::class,
+        );
+    }
+
+    /**
+     * @param 'spending'|'services'|'inventory'|'billing'|'operations' $type
+     * @param 'day'|'week'|'month'|null $groupBy
+     * @param array<string, mixed> $query
+     */
+    public function report(
+        string $type,
+        ?string $from = null,
+        ?string $to = null,
+        ?string $groupBy = null,
+        array $query = [],
+    ): ReportDto {
+        return $this->dto(
+            $this->get(
+                '/clients-api/reports/' . rawurlencode($type),
+                $this->mergeQuery($query, compact('from', 'to', 'groupBy')),
+            ),
+            ReportDto::class,
         );
     }
 

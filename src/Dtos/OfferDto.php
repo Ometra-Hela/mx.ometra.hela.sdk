@@ -14,6 +14,12 @@ final class OfferDto extends DataTransferObject
         public readonly ?string $altanName = null,
         public readonly ?string $publicName = null,
         public readonly ?float $publicPrice = null,
+        public readonly ?float $listPrice = null,
+        public readonly ?float $effectivePrice = null,
+        public readonly ?bool $hasClientPrice = null,
+        public readonly ?bool $purchasable = null,
+        /** @var array{activation?: bool, renewal?: bool, topup?: bool, purchase?: bool} */
+        public readonly array $capabilities = [],
         public readonly ?float $data = null,
         public readonly int|float|null $validity = null,
         public readonly ?string $validityUnits = null,
@@ -48,7 +54,12 @@ final class OfferDto extends DataTransferObject
             supplementaryId: self::firstValue($data, ['supplementaryId', 'supplementary_id']),
             altanName: self::nullableString(self::firstValue($data, ['altanName', 'altan_name'])),
             publicName: self::nullableString(self::firstValue($data, ['publicName', 'public_name', 'name'])),
-            publicPrice: self::nullableFloat(self::firstValue($data, ['publicPrice', 'public_price', 'price'])),
+            publicPrice: self::nullableFloat(self::firstValue($data, ['publicPrice', 'public_price', 'price', 'effective_price', 'list_price'])),
+            listPrice: self::nullableFloat(self::firstValue($data, ['listPrice', 'list_price', 'publicPrice', 'public_price', 'price'])),
+            effectivePrice: self::nullableFloat(self::firstValue($data, ['effectivePrice', 'effective_price', 'publicPrice', 'public_price', 'price'])),
+            hasClientPrice: self::nullableBool(self::firstValue($data, ['hasClientPrice', 'has_client_price'], false)),
+            purchasable: self::nullableBool(self::firstValue($data, ['purchasable'], true)),
+            capabilities: self::capabilities($data['capabilities'] ?? []),
             data: self::nullableFloat($data['data'] ?? null),
             validity: self::nullableNumber(self::firstValue($data, ['validity'])),
             validityUnits: self::nullableString(self::firstValue($data, ['validityUnits', 'validity_units'])),
@@ -113,5 +124,24 @@ final class OfferDto extends DataTransferObject
             '0', 'false', 'no', 'off' => false,
             default => null,
         };
+    }
+
+    /**
+     * @return array{activation?: bool, renewal?: bool, topup?: bool, purchase?: bool}
+     */
+    private static function capabilities(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $capabilities = [];
+        foreach (['activation', 'renewal', 'topup', 'purchase'] as $capability) {
+            if (array_key_exists($capability, $value)) {
+                $capabilities[$capability] = self::nullableBool($value[$capability]) ?? false;
+            }
+        }
+
+        return $capabilities;
     }
 }

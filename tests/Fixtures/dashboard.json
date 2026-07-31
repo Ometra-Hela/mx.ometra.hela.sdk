@@ -1,0 +1,13 @@
+{
+  "data": {
+    "period": "30d",
+    "generated_at": "2026-07-31T12:00:00Z",
+    "kpis": {"active_services": 42, "spending": 4250.5},
+    "spending": {"currency": "MXN", "series": [{"date": "2026-07-31", "value": 150}]},
+    "services": {"active": 42, "suspended": 2},
+    "inventory": {"available_sims": 18},
+    "billing": {"pending_invoices": 1},
+    "alerts": [{"type": "billing", "severity": "warning"}],
+    "recent_activity": [{"id": 1, "action": "service.activated"}]
+  }
+}

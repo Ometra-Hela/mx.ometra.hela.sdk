@@ -1,0 +1,19 @@
+{
+  "data": [
+    {
+      "offer_id": "HLA-100",
+      "public_name": "Plan Empresa 100",
+      "public_price": 120,
+      "list_price": 120,
+      "effective_price": 99.5,
+      "has_client_price": true,
+      "purchasable": true,
+      "capabilities": {
+        "activation": true,
+        "renewal": true,
+        "topup": false,
+        "purchase": true
+      }
+    }
+  ]
+}

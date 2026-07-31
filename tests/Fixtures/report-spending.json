@@ -1,0 +1,12 @@
+{
+  "data": {
+    "type": "spending",
+    "from": "2026-07-01",
+    "to": "2026-07-31",
+    "group_by": "day",
+    "generated_at": "2026-07-31T12:00:00Z",
+    "summary": {"total": 4250.5, "currency": "MXN"},
+    "series": [{"period": "2026-07-31", "value": 150}],
+    "breakdown": [{"key": "topups", "label": "Recargas", "value": 3000}]
+  }
+}
