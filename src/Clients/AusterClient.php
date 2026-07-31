@@ -274,7 +274,7 @@ class AusterClient extends HelaAppClient
      */
     public function createOrder(array $data): OrderDto
     {
-        return $this->dto($this->post('/api/orders/new', $data), OrderDto::class);
+        return $this->dto($this->post('/api/orders', $data), OrderDto::class);
     }
 
     public function order(int|string $orderId): OrderDto
@@ -287,7 +287,7 @@ class AusterClient extends HelaAppClient
      */
     public function orderByMsisdn(string $msisdn): DtoCollection
     {
-        return $this->dtoCollection($this->get('/api/orders/msisdn/' . $msisdn), OrderDto::class);
+        return $this->dtoCollection($this->get('/api/orders', ['msisdn' => $msisdn]), OrderDto::class);
     }
 
     /**
@@ -295,17 +295,17 @@ class AusterClient extends HelaAppClient
      */
     public function orderPayment(int|string $orderId): DtoCollection
     {
-        return $this->dtoCollection($this->get('/api/orders/' . $orderId . '/payment'), PaymentDto::class);
+        return $this->dtoCollection($this->get('/api/orders/' . $orderId . '/payments'), PaymentDto::class);
     }
 
     public function publishOrder(int|string $orderId): OrderDto
     {
-        return $this->dto($this->post('/api/orders/' . $orderId . '/publish'), OrderDto::class);
+        return $this->dto($this->put('/api/orders/' . $orderId . '/publication', ['published' => true]), OrderDto::class);
     }
 
     public function unpublishOrder(int|string $orderId): OrderDto
     {
-        return $this->dto($this->post('/api/orders/' . $orderId . '/unpublish'), OrderDto::class);
+        return $this->dto($this->put('/api/orders/' . $orderId . '/publication', ['published' => false]), OrderDto::class);
     }
 
     public function processOrder(int|string $orderId): ApiResponseDto
@@ -323,7 +323,7 @@ class AusterClient extends HelaAppClient
      */
     public function addOrderPayment(int|string $orderId, array $data): ApiResponseDto
     {
-        return $this->apiResponse($this->post('/api/orders/' . $orderId . '/add-payment', $data));
+        return $this->apiResponse($this->post('/api/orders/' . $orderId . '/payments', $data));
     }
 
     /**
@@ -331,7 +331,12 @@ class AusterClient extends HelaAppClient
      */
     public function setOrderDiscountCode(int|string $orderId, array $data): ApiResponseDto
     {
-        return $this->apiResponse($this->post('/api/orders/' . $orderId . '/set-discount-code', $data));
+        if (!array_key_exists('discount_code', $data) && array_key_exists('code', $data)) {
+            $data['discount_code'] = $data['code'];
+            unset($data['code']);
+        }
+
+        return $this->apiResponse($this->put('/api/orders/' . $orderId . '/discount-code', $data));
     }
 
     /**
@@ -347,7 +352,7 @@ class AusterClient extends HelaAppClient
      */
     public function bulkCreateOrderItems(int|string $orderId, array $data): GenericDto
     {
-        return $this->dto($this->post('/api/orders/' . $orderId . '/items/bulk-create', $data), GenericDto::class);
+        return $this->dto($this->post('/api/orders/' . $orderId . '/items/bulk', $data), GenericDto::class);
     }
 
     /**
@@ -355,7 +360,7 @@ class AusterClient extends HelaAppClient
      */
     public function bulkAssignOrderItemTargets(int|string $orderId, array $data): GenericDto
     {
-        return $this->dto($this->post('/api/orders/' . $orderId . '/items/bulk-assign-targets', $data), GenericDto::class);
+        return $this->dto($this->patch('/api/orders/' . $orderId . '/items/targets', $data), GenericDto::class);
     }
 
     /**
