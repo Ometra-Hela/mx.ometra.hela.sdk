@@ -917,4 +917,43 @@ class AusterClientsApiClient extends HelaAppClient
     {
         return $this->apiResponse($this->delete('/clients-api/users/' . $clientUserUri));
     }
+
+    /**
+     * @param array<string, mixed> $query
+     *
+     * @return DtoCollection<GenericDto>
+     */
+    public function storedPaymentMethods(array $query = []): DtoCollection
+    {
+        return $this->dtoCollection(
+            $this->get('/clients-api/payment-methods', $query),
+            GenericDto::class,
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function setDefaultPaymentMethod(string $providerPaymentMethodId, array $data = []): GenericDto
+    {
+        return $this->dto(
+            $this->post('/clients-api/payment-methods/default', array_merge($data, [
+                'provider_payment_method_id' => $providerPaymentMethodId,
+            ])),
+            GenericDto::class,
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function deactivatePaymentMethod(string $providerPaymentMethodId, array $data = []): GenericDto
+    {
+        return $this->dto(
+            $this->post('/clients-api/payment-methods/deactivate', array_merge($data, [
+                'provider_payment_method_id' => $providerPaymentMethodId,
+            ])),
+            GenericDto::class,
+        );
+    }
 }
