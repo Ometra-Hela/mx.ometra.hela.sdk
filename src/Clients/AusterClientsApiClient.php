@@ -12,6 +12,8 @@ use Ometra\HelaSdk\Dtos\DashboardDto;
 use Ometra\HelaSdk\Dtos\GenericDto;
 use Ometra\HelaSdk\Dtos\InvoiceDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
+use Ometra\HelaSdk\Dtos\FederatedSessionDto;
+use Ometra\HelaSdk\Dtos\PortalAuthenticationTransactionDto;
 use Ometra\HelaSdk\Dtos\NotificationPreferencesDto;
 use Ometra\HelaSdk\Dtos\OrderDto;
 use Ometra\HelaSdk\Dtos\PortabilityDto;
@@ -27,6 +29,32 @@ use Ometra\HelaSdk\Dtos\WalletTransactionDto;
 
 class AusterClientsApiClient extends HelaAppClient
 {
+    public function beginPortalPasswordLogin(array $data): PortalAuthenticationTransactionDto
+    {
+        return $this->dto($this->post('/clients-api/authentication/portal/password', $data), PortalAuthenticationTransactionDto::class);
+    }
+
+    public function exchangePortalAssertion(string $assertion): FederatedSessionDto
+    {
+        return $this->dto($this->post('/clients-api/authentication/portal/exchange', ['assertion' => $assertion]), FederatedSessionDto::class);
+    }
+
+    public function refreshPortalSession(string $refreshToken): FederatedSessionDto
+    {
+        return $this->dto($this->post('/clients-api/authentication/portal/refresh', ['refresh_token' => $refreshToken]), FederatedSessionDto::class);
+    }
+
+    public function logoutPortalSession(string $refreshToken): ApiResponseDto
+    {
+        return $this->apiResponse($this->post('/clients-api/authentication/portal/logout', ['refresh_token' => $refreshToken]));
+    }
+
+    /** @return DtoCollection<GenericDto> */
+    public function customerRoles(): DtoCollection
+    {
+        return $this->dtoCollection($this->get('/clients-api/authorization/roles'), GenericDto::class);
+    }
+
     public function token(): ?string
     {
         $token = parent::token();
@@ -654,6 +682,31 @@ class AusterClientsApiClient extends HelaAppClient
     public function serviceProfile(string $msisdn): GenericDto
     {
         return $this->dto($this->get('/clients-api/services/' . $msisdn . '/profile'), GenericDto::class);
+    }
+
+    public function monthlyServiceConsumption(?string $month = null): GenericDto
+    {
+        return $this->dto(
+            $this->get('/clients-api/services/consumption/monthly', array_filter(['month' => $month])),
+            GenericDto::class,
+        );
+    }
+
+    public function monthlyConsumptionForService(string $msisdn, ?string $month = null): GenericDto
+    {
+        return $this->dto(
+            $this->get('/clients-api/services/' . rawurlencode($msisdn) . '/consumption/monthly', array_filter(['month' => $month])),
+            GenericDto::class,
+        );
+    }
+
+    /** @param list<int> $serviceIds */
+    public function assignServiceGroupSelection(array $serviceIds, ?int $groupId): GenericDto
+    {
+        return $this->dto($this->put('/clients-api/service-groups/selection', [
+            'service_ids' => $serviceIds,
+            'group_id' => $groupId,
+        ]), GenericDto::class);
     }
 
     /**

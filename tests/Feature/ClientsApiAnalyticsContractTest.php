@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Ometra\HelaSdk\Dtos\DashboardDto;
 use Ometra\HelaSdk\Dtos\OfferDto;
 use Ometra\HelaSdk\Dtos\ReportDto;
+use Ometra\HelaSdk\Dtos\GenericDto;
 use Ometra\HelaSdk\Facades\HelaSdk;
 use Ometra\HelaSdk\Tests\TestCase;
 
@@ -15,6 +16,36 @@ final class ClientsApiAnalyticsContractTest extends TestCase
     {
         parent::setUp();
         $this->app['config']->set('hela-sdk.auster.base_url', 'https://auster.example.test');
+    }
+
+    public function test_monthly_consumption_and_group_assignment_use_client_scoped_routes(): void
+    {
+        Http::fake([
+            'https://auster.example.test/clients-api/services/consumption/monthly*' => Http::response(['data' => [
+                'month' => '2026-09', 'total_data_mb' => 125.5,
+                'services' => [['id_service' => 10, 'data_mb' => 125.5]],
+            ]]),
+            'https://auster.example.test/clients-api/services/5511111111/consumption/monthly*' => Http::response(['data' => [
+                'id_service' => 10, 'data_mb' => 125.5, 'daily' => [['date' => '2026-09-01', 'data_mb' => 125.5]],
+            ]]),
+            'https://auster.example.test/clients-api/service-groups/selection' => Http::response(['data' => ['updated_count' => 1]]),
+        ]);
+
+        $client = HelaSdk::auster()->clientsApiAsClient('client-token');
+        $usage = $client->monthlyServiceConsumption('2026-09');
+        $serviceUsage = $client->monthlyConsumptionForService('5511111111', '2026-09');
+        $assigned = $client->assignServiceGroupSelection([10], null);
+
+        $this->assertInstanceOf(GenericDto::class, $usage);
+        $this->assertSame(125.5, $usage->get('total_data_mb'));
+        $this->assertSame(125.5, $serviceUsage->get('data_mb'));
+        $this->assertSame(1, $assigned->get('updated_count'));
+        Http::assertSent(fn ($request): bool => $request->method() === 'GET'
+            && $request->url() === 'https://auster.example.test/clients-api/services/consumption/monthly?month=2026-09');
+        Http::assertSent(fn ($request): bool => $request->method() === 'PUT'
+            && parse_url($request->url(), PHP_URL_PATH) === '/clients-api/service-groups/selection'
+            && $request['service_ids'] === [10]
+            && $request['group_id'] === null);
     }
 
     public function test_effective_catalog_fixture_is_typed_and_keeps_public_price_compatibility(): void
