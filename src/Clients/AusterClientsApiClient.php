@@ -39,6 +39,17 @@ class AusterClientsApiClient extends HelaAppClient
         return $this->dto($this->post('/clients-api/authentication/portal/exchange', ['assertion' => $assertion]), FederatedSessionDto::class);
     }
 
+    /** @param list<string> $methods */
+    public function exchangePortalClientSession(string $userId, array $methods, ?string $authenticationId = null): FederatedSessionDto
+    {
+        $payload = ['user_id' => $userId, 'methods' => $methods];
+        if ($authenticationId !== null) {
+            $payload['authentication_id'] = $authenticationId;
+        }
+
+        return $this->dto($this->post('/clients-api/authentication/portal/exchange', $payload), FederatedSessionDto::class);
+    }
+
     public function refreshPortalSession(string $refreshToken): FederatedSessionDto
     {
         return $this->dto($this->post('/clients-api/authentication/portal/refresh', ['refresh_token' => $refreshToken]), FederatedSessionDto::class);
