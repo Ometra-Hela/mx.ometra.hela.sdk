@@ -6,6 +6,7 @@ final class ServiceDto extends DataTransferObject
 {
     /**
      * @param array<string, mixed> $attributes
+     * @param array<string, mixed>|null $zephyrDisplay
      * @param array<int, mixed> $users
      * @param array<string, mixed> $linking
      * @param array<string, mixed> $consumptionSummary
@@ -42,6 +43,7 @@ final class ServiceDto extends DataTransferObject
         public readonly array $consumptionSummary = [],
         public readonly ?string $dtServiceExpirity = null,
         public readonly array $users = [],
+        public readonly ?array $zephyrDisplay = null,
     ) {
         parent::__construct($attributes);
     }
@@ -55,6 +57,7 @@ final class ServiceDto extends DataTransferObject
 
         return new self(
             attributes: $data,
+            zephyrDisplay: is_array($data['zephyr_display'] ?? $data['zephyrDisplay'] ?? null) ? ($data['zephyr_display'] ?? $data['zephyrDisplay']) : null,
             id: self::firstValue($data, ['id', 'id_service', 'service_id']),
             clientId: self::firstValue($data, ['clientId', 'id_client', 'client_id']),
             offerId: self::firstValue($data, ['offerId', 'offer_id']),
